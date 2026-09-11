@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<template id="__bundler_thumbnail" data-bg-color="#07090A">
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+<rect width="1200" height="800" fill="#07090A"/>
+<rect x="360" y="240" width="240" height="320" rx="60" fill="#E23B3B"/>
+<rect x="600" y="240" width="240" height="320" rx="60" fill="#2FBF6E"/>
+<circle cx="600" cy="400" r="86" fill="#07090A"/>
+<circle cx="600" cy="400" r="60" fill="#F2F5F4"/>
+</svg>
+</template>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,600&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#07090A;font-family:'Barlow',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#35D07F;text-decoration:none}a:hover{color:#5BE39B}
+::-webkit-scrollbar{width:0;height:0}
+@keyframes popin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:22px;padding:38px 20px 60px;background:radial-gradient(120% 80% at 50% 0%,#12181A 0%,#07090A 65%)">
+
+  <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;justify-content:center">
+    <span style="font:700 20px/1 'Barlow Condensed';letter-spacing:.16em;text-transform:uppercase;color:#F2F5F4">Hallenkick</span>
+    <span style="font:500 13px/1 'Barlow';color:#6E7A76">Prototyp · Rot gegen Grün · Saison 25/26</span>
+  </div>
+
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+
+  <div style="height:100%;display:flex;flex-direction:column;background:#0B0E0F;color:#F2F5F4;font-family:'Barlow',system-ui,sans-serif;overflow:hidden">
+
+    <!-- ══════════ LOGIN ══════════ -->
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Login" style="height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:96px 26px 34px;box-sizing:border-box;background:linear-gradient(160deg,#1A1010 0%,#0B0E0F 42%,#0C1611 100%)">
+        <div style="display:flex;flex-direction:column;gap:26px">
+          <div style="width:74px;height:74px;border-radius:22px;overflow:hidden;display:flex;box-shadow:0 12px 36px rgba(0,0,0,.5)">
+            <div style="flex:1;background:#E23B3B"></div>
+            <div style="flex:1;background:#2FBF6E"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font:700 44px/.92 'Barlow Condensed';letter-spacing:-.01em;text-transform:uppercase">Unsere<br>Fußball&shy;gruppe</div>
+            <div style="font:500 15px/1.45 'Barlow';color:#8A9490;max-width:270px">Termine, Aufstellungen und alle Zahlen der Runde — Donnerstag, 20:00, Halle Ost.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Gruppen-Code</label>
+            <input value="{{ code }}" onChange="{{ onCode }}" placeholder="z.B. HALLE-OST" style="height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:#14181A;color:#F2F5F4;font:600 17px 'Barlow';padding:0 16px;outline:none;letter-spacing:.04em">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Dein Name</label>
+            <input value="{{ uname }}" onChange="{{ onName }}" placeholder="Vorname Nachname" style="height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:#14181A;color:#F2F5F4;font:600 17px 'Barlow';padding:0 16px;outline:none">
+          </div>
+          <button onClick="{{ doLogin }}" style="height:56px;border:none;border-radius:15px;background:linear-gradient(90deg,#E23B3B,#2FBF6E);color:#fff;font:700 17px 'Barlow';letter-spacing:.02em;cursor:pointer;margin-top:4px" style-hover="filter:brightness(1.1)">Einsteigen</button>
+          <div style="text-align:center;font:500 12.5px 'Barlow';color:#5F6A67;margin-top:2px">Code vom Organisator bekommen? Einfach eintragen.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══════════ APP SHELL ══════════ -->
+    <sc-if value="{{ inApp }}">
+      <div style="height:100%;display:flex;flex-direction:column;overflow:hidden">
+
+        <!-- header -->
+        <div style="flex:none;padding:60px 20px 12px;display:flex;align-items:flex-end;gap:12px;background:#0B0E0F;border-bottom:1px solid rgba(255,255,255,.06)">
+          <sc-if value="{{ showBack }}">
+            <button onClick="{{ back }}" style="width:36px;height:36px;flex:none;border-radius:11px;border:1px solid rgba(255,255,255,.1);background:#14181A;color:#F2F5F4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0" style-hover="background:#1E2427">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </sc-if>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+            <div style="font:600 10px/1 'Barlow';letter-spacing:.18em;text-transform:uppercase;color:#6E7A76">{{ headSub }}</div>
+            <div style="font:700 27px/1.05 'Barlow Condensed';text-transform:uppercase;letter-spacing:.01em">{{ headTitle }}</div>
+          </div>
+          <sc-if value="{{ showAvatar }}">
+            <div style="width:38px;height:38px;flex:none;border-radius:50%;background:#1E2427;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font:700 13px 'Barlow';color:#B9C4C0">{{ meInitials }}</div>
+          </sc-if>
+        </div>
+
+        <!-- scroll body -->
+        <div style="flex:1;overflow:auto;padding:16px 20px 26px">
+
+          <!-- ────── START ────── -->
+          <sc-if value="{{ isStart }}">
+            <div data-screen-label="Start" style="display:flex;flex-direction:column;gap:16px">
+
+              <div style="border-radius:20px;overflow:hidden;background:#14181A;border:1px solid rgba(255,255,255,.07)">
+                <div style="height:4px;display:flex"><div style="flex:1;background:#E23B3B"></div><div style="flex:1;background:#2FBF6E"></div></div>
+                <div style="padding:16px 16px 18px;display:flex;flex-direction:column;gap:14px">
+                  <div style="display:flex;align-items:flex-start;gap:12px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#2FBF6E;margin-bottom:6px">Nächster Termin</div>
+                      <div style="font:700 30px/1 'Barlow Condensed';text-transform:uppercase">{{ next.datum }}</div>
+                      <div style="font:500 14px/1.3 'Barlow';color:#8A9490;margin-top:4px">{{ next.zeit }} · {{ next.ort }}</div>
+                    </div>
+                    <div style="text-align:right">
+                      <div style="font:700 24px/1 'Barlow Condensed';color:#F2F5F4">{{ next.countdown }}</div>
+                      <div style="font:600 10px/1 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:#6E7A76;margin-top:5px">bis Anpfiff</div>
+                    </div>
+                  </div>
+
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <div style="flex:1;height:6px;border-radius:99px;background:#232A2D;overflow:hidden">
+                      <div style="height:100%;background:#2FBF6E;width:{{ next.fillPct }}"></div>
+                    </div>
+                    <div style="font:600 12px 'Barlow';color:#B9C4C0;white-space:nowrap">{{ next.zusagenText }}</div>
+                  </div>
+
+                  <div style="display:flex;gap:8px">
+                    <button onClick="{{ next.onYes }}" style="flex:1;height:46px;border-radius:13px;border:none;cursor:pointer;font:700 15px 'Barlow';background:{{ next.yesBg }};color:{{ next.yesFg }}">Bin dabei</button>
+                    <button onClick="{{ next.onNo }}" style="flex:1;height:46px;border-radius:13px;border:none;cursor:pointer;font:700 15px 'Barlow';background:{{ next.noBg }};color:{{ next.noFg }}">Kann nicht</button>
+                    <button onClick="{{ next.onOpen }}" style="width:46px;height:46px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:#1C2124;color:#F2F5F4;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Deine Saison</div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                  <sc-for list="{{ meTiles }}" as="t" hint-placeholder-count="4">
+                    <div style="background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:11px 10px;display:flex;flex-direction:column;gap:4px;align-items:center">
+                      <div style="font:700 24px/1 'Barlow Condensed';color:{{ t.color }}">{{ t.val }}</div>
+                      <div style="font:600 9.5px/1.1 'Barlow';letter-spacing:.08em;text-transform:uppercase;color:#6E7A76;text-align:center">{{ t.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Deine letzten 5</div>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ meForm }}" as="f" hint-placeholder-count="5">
+                    <div style="flex:1;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font:700 16px 'Barlow Condensed';background:{{ f.bg }};color:{{ f.fg }}">{{ f.k }}</div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Letztes Spiel</div>
+                <div onClick="{{ lastGame.onOpen }}" style="background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:15px 16px;display:flex;align-items:center;gap:14px;cursor:pointer">
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+                    <div style="font:600 12px 'Barlow';color:#E23B3B;letter-spacing:.1em;text-transform:uppercase">Rot</div>
+                    <div style="font:500 12px 'Barlow';color:#6E7A76">{{ lastGame.rotTop }}</div>
+                  </div>
+                  <div style="font:700 34px/1 'Barlow Condensed';letter-spacing:.02em">{{ lastGame.score }}</div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+                    <div style="font:600 12px 'Barlow';color:#2FBF6E;letter-spacing:.1em;text-transform:uppercase">Grün</div>
+                    <div style="font:500 12px 'Barlow';color:#6E7A76">{{ lastGame.gruenTop }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Top der Saison</div>
+                <div style="display:flex;flex-direction:column;gap:1px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.07)">
+                  <sc-for list="{{ topThree }}" as="p" hint-placeholder-count="3">
+                    <div onClick="{{ p.onTap }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#14181A;cursor:pointer">
+                      <div style="width:20px;font:700 15px 'Barlow Condensed';color:#6E7A76">{{ p.rank }}</div>
+                      <div style="width:32px;height:32px;border-radius:50%;background:#232A2D;display:flex;align-items:center;justify-content:center;font:700 12px 'Barlow';color:#B9C4C0">{{ p.initials }}</div>
+                      <div style="flex:1;font:600 15px 'Barlow'">{{ p.name }}</div>
+                      <div style="font:700 19px 'Barlow Condensed';color:#F4D35E">{{ p.val }}</div>
+                      <div style="font:600 10px 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#6E7A76">Tore</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ────── TERMINE ────── -->
+          <sc-if value="{{ isTermine }}">
+            <div data-screen-label="Termine" style="display:flex;flex-direction:column;gap:18px">
+              <button onClick="{{ goNeu }}" style="height:50px;border-radius:14px;border:1px dashed rgba(47,191,110,.5);background:rgba(47,191,110,.08);color:#2FBF6E;font:700 15px 'Barlow';cursor:pointer" style-hover="background:rgba(47,191,110,.15)">+ Neuen Termin anlegen</button>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Kommend</div>
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ upcoming }}" as="t" hint-placeholder-count="3">
+                    <div onClick="{{ t.onOpen }}" style="background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:14px 15px;display:flex;align-items:center;gap:13px;cursor:pointer" style-hover="border-color:rgba(255,255,255,.18)">
+                      <div style="width:46px;flex:none;text-align:center">
+                        <div style="font:700 22px/1 'Barlow Condensed'">{{ t.tag }}</div>
+                        <div style="font:600 10px/1 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#6E7A76;margin-top:3px">{{ t.monat }}</div>
+                      </div>
+                      <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.08)"></div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font:600 15px 'Barlow'">{{ t.wochentag }}, {{ t.zeit }}</div>
+                        <div style="font:500 13px 'Barlow';color:#6E7A76">{{ t.ort }}</div>
+                      </div>
+                      <div style="text-align:right">
+                        <div style="font:700 17px 'Barlow Condensed';color:{{ t.zusagenColor }}">{{ t.zusagen }}</div>
+                        <div style="font:600 9.5px 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#6E7A76">Zusagen</div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px/1 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Gespielt</div>
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ past }}" as="t" hint-placeholder-count="4">
+                    <div onClick="{{ t.onOpen }}" style="background:#101416;border:1px solid rgba(255,255,255,.05);border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:13px;cursor:pointer">
+                      <div style="width:46px;flex:none;text-align:center;opacity:.7">
+                        <div style="font:700 20px/1 'Barlow Condensed'">{{ t.tag }}</div>
+                        <div style="font:600 10px/1 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#6E7A76;margin-top:3px">{{ t.monat }}</div>
+                      </div>
+                      <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.07)"></div>
+                      <div style="flex:1;min-width:0;font:500 13px 'Barlow';color:#8A9490">{{ t.ort }}</div>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div style="width:8px;height:8px;border-radius:50%;background:#E23B3B"></div>
+                        <div style="font:700 21px 'Barlow Condensed'">{{ t.score }}</div>
+                        <div style="width:8px;height:8px;border-radius:50%;background:#2FBF6E"></div>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ────── TERMIN DETAIL ────── -->
+          <sc-if value="{{ isDetail }}">
+            <div data-screen-label="Termin-Detail" style="display:flex;flex-direction:column;gap:16px">
+
+              <div style="display:flex;gap:8px">
+                <div style="flex:1;background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:11px 13px">
+                  <div style="font:600 9.5px 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:#6E7A76">Zusagen</div>
+                  <div style="font:700 22px/1.1 'Barlow Condensed';margin-top:3px">{{ det.zusagen }}</div>
+                </div>
+                <div style="flex:1;background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:11px 13px">
+                  <div style="font:600 9.5px 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:#6E7A76">Eingeteilt</div>
+                  <div style="font:700 22px/1.1 'Barlow Condensed';margin-top:3px">{{ det.eingeteilt }}</div>
+                </div>
+                <div style="flex:1;background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:11px 13px">
+                  <div style="font:600 9.5px 'Barlow';letter-spacing:.12em;text-transform:uppercase;color:#6E7A76">Balance</div>
+                  <div style="font:700 22px/1.1 'Barlow Condensed';margin-top:3px;color:{{ det.balanceColor }}">{{ det.balance }}</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ det.onAuto }}" style="flex:1;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:#1C2124;color:#F2F5F4;font:700 14px 'Barlow';cursor:pointer" style-hover="background:#242B2E">Auto-Aufstellung</button>
+                <button onClick="{{ det.onClear }}" style="width:100px;height:44px;border-radius:13px;border:1px solid rgba(255,255,255,.09);background:transparent;color:#8A9490;font:600 14px 'Barlow';cursor:pointer">Leeren</button>
+              </div>
+
+              <div style="border-radius:18px;overflow:hidden;border:1px solid rgba(226,59,59,.35);background:linear-gradient(180deg,rgba(226,59,59,.14),rgba(226,59,59,.04))">
+                <div style="display:flex;align-items:center;gap:9px;padding:11px 14px;background:rgba(226,59,59,.18)">
+                  <div style="width:10px;height:10px;border-radius:3px;background:#E23B3B"></div>
+                  <div style="flex:1;font:700 15px 'Barlow';letter-spacing:.14em;text-transform:uppercase">Team Rot</div>
+                  <div style="font:600 12px 'Barlow';color:#F0A9A9">{{ det.rotInfo }}</div>
+                </div>
+                <div style="padding:12px;display:flex;flex-wrap:wrap;gap:7px;min-height:52px">
+                  <sc-for list="{{ det.rot }}" as="p" hint-placeholder-count="5">
+                    <div onClick="{{ p.onTap }}" style="display:flex;align-items:center;gap:8px;padding:7px 11px 7px 7px;border-radius:99px;background:#1D1214;border:1px solid rgba(226,59,59,.4);cursor:pointer" style-hover="background:#26171A">
+                      <div style="width:24px;height:24px;border-radius:50%;background:#E23B3B;color:#fff;display:flex;align-items:center;justify-content:center;font:700 10.5px 'Barlow'">{{ p.initials }}</div>
+                      <div style="font:600 13.5px 'Barlow'">{{ p.name }}</div>
+                      <div style="font:600 11px 'Barlow';color:#9B6C6C">{{ p.st }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="border-radius:18px;overflow:hidden;border:1px solid rgba(47,191,110,.35);background:linear-gradient(180deg,rgba(47,191,110,.14),rgba(47,191,110,.04))">
+                <div style="display:flex;align-items:center;gap:9px;padding:11px 14px;background:rgba(47,191,110,.16)">
+                  <div style="width:10px;height:10px;border-radius:3px;background:#2FBF6E"></div>
+                  <div style="flex:1;font:700 15px 'Barlow';letter-spacing:.14em;text-transform:uppercase">Team Grün</div>
+                  <div style="font:600 12px 'Barlow';color:#9BD9BA">{{ det.gruenInfo }}</div>
+                </div>
+                <div style="padding:12px;display:flex;flex-wrap:wrap;gap:7px;min-height:52px">
+                  <sc-for list="{{ det.gruen }}" as="p" hint-placeholder-count="5">
+                    <div onClick="{{ p.onTap }}" style="display:flex;align-items:center;gap:8px;padding:7px 11px 7px 7px;border-radius:99px;background:#0F1A15;border:1px solid rgba(47,191,110,.4);cursor:pointer" style-hover="background:#14231C">
+                      <div style="width:24px;height:24px;border-radius:50%;background:#2FBF6E;color:#062012;display:flex;align-items:center;justify-content:center;font:700 10.5px 'Barlow'">{{ p.initials }}</div>
+                      <div style="font:600 13.5px 'Barlow'">{{ p.name }}</div>
+                      <div style="font:600 11px 'Barlow';color:#6FA98A">{{ p.st }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:9px">
+                  <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Noch nicht eingeteilt</div>
+                  <div style="font:600 11px 'Barlow';color:#4E5754">tippen zum Zuteilen</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ det.pool }}" as="p" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px 8px 8px;border-radius:14px;background:#14181A;border:1px solid rgba(255,255,255,.07)">
+                      <div style="width:30px;height:30px;border-radius:50%;background:#232A2D;display:flex;align-items:center;justify-content:center;font:700 11px 'Barlow';color:#B9C4C0">{{ p.initials }}</div>
+                      <div style="flex:1;min-width:0">
+                        <div style="font:600 14px 'Barlow'">{{ p.name }}</div>
+                        <div style="font:500 11.5px 'Barlow';color:#6E7A76">Stärke {{ p.st }} · {{ p.pos }}</div>
+                      </div>
+                      <button onClick="{{ p.toRot }}" style="width:38px;height:32px;border-radius:10px;border:1px solid rgba(226,59,59,.45);background:rgba(226,59,59,.12);color:#F08585;font:700 12px 'Barlow';cursor:pointer">Rot</button>
+                      <button onClick="{{ p.toGruen }}" style="width:44px;height:32px;border-radius:10px;border:1px solid rgba(47,191,110,.45);background:rgba(47,191,110,.12);color:#6FD8A2;font:700 12px 'Barlow';cursor:pointer">Grün</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <button onClick="{{ det.onErgebnis }}" style="height:54px;border-radius:15px;border:none;background:#F2F5F4;color:#0B0E0F;font:700 16px 'Barlow';cursor:pointer;margin-top:2px">{{ det.cta }}</button>
+            </div>
+          </sc-if>
+
+          <!-- ────── ERGEBNIS ────── -->
+          <sc-if value="{{ isErgebnis }}">
+            <div data-screen-label="Ergebnis erfassen" style="display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:20px;border:1px solid rgba(255,255,255,.08);background:#14181A;padding:18px 16px;display:flex;align-items:center;justify-content:center;gap:18px">
+                <div style="flex:1;text-align:center">
+                  <div style="font:700 13px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#E23B3B">Rot</div>
+                  <div style="font:700 62px/1 'Barlow Condensed';margin-top:4px">{{ erg.rotScore }}</div>
+                </div>
+                <div style="font:700 30px 'Barlow Condensed';color:#3A4245">:</div>
+                <div style="flex:1;text-align:center">
+                  <div style="font:700 13px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#2FBF6E">Grün</div>
+                  <div style="font:700 62px/1 'Barlow Condensed';margin-top:4px">{{ erg.gruenScore }}</div>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#E23B3B;margin-bottom:9px">Torschützen Rot</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ erg.rot }}" as="p" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:13px;background:#14181A;border:1px solid rgba(255,255,255,.06)">
+                      <div style="flex:1;font:600 14.5px 'Barlow'">{{ p.name }}</div>
+                      <button onClick="{{ p.minus }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#8A9490;font:700 17px 'Barlow';cursor:pointer;padding:0">–</button>
+                      <div style="width:26px;text-align:center;font:700 19px 'Barlow Condensed';color:{{ p.color }}">{{ p.goals }}</div>
+                      <button onClick="{{ p.plus }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(226,59,59,.5);background:rgba(226,59,59,.14);color:#F08585;font:700 17px 'Barlow';cursor:pointer;padding:0">+</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#2FBF6E;margin-bottom:9px">Torschützen Grün</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ erg.gruen }}" as="p" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:10px;padding:7px 9px;border-radius:13px;background:#14181A;border:1px solid rgba(255,255,255,.06)">
+                      <div style="flex:1;font:600 14.5px 'Barlow'">{{ p.name }}</div>
+                      <button onClick="{{ p.minus }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#8A9490;font:700 17px 'Barlow';cursor:pointer;padding:0">–</button>
+                      <div style="width:26px;text-align:center;font:700 19px 'Barlow Condensed';color:{{ p.color }}">{{ p.goals }}</div>
+                      <button onClick="{{ p.plus }}" style="width:32px;height:32px;border-radius:9px;border:1px solid rgba(47,191,110,.5);background:rgba(47,191,110,.14);color:#6FD8A2;font:700 17px 'Barlow';cursor:pointer;padding:0">+</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:14px;background:#14181A;border:1px solid rgba(255,255,255,.06)">
+                <div style="flex:1;font:600 14px 'Barlow';color:#B9C4C0">Eigentore</div>
+                <button onClick="{{ erg.ownRotMinus }}" style="width:30px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#8A9490;font:700 16px 'Barlow';cursor:pointer;padding:0">–</button>
+                <div style="font:700 17px 'Barlow Condensed';color:#E23B3B;width:20px;text-align:center">{{ erg.ownRot }}</div>
+                <button onClick="{{ erg.ownRotPlus }}" style="width:30px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#F08585;font:700 16px 'Barlow';cursor:pointer;padding:0">+</button>
+                <div style="width:1px;height:22px;background:rgba(255,255,255,.1)"></div>
+                <button onClick="{{ erg.ownGruenMinus }}" style="width:30px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#8A9490;font:700 16px 'Barlow';cursor:pointer;padding:0">–</button>
+                <div style="font:700 17px 'Barlow Condensed';color:#2FBF6E;width:20px;text-align:center">{{ erg.ownGruen }}</div>
+                <button onClick="{{ erg.ownGruenPlus }}" style="width:30px;height:30px;border-radius:9px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#6FD8A2;font:700 16px 'Barlow';cursor:pointer;padding:0">+</button>
+              </div>
+
+              <div>
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#F4D35E;margin-bottom:9px">MVP des Abends</div>
+                <div style="display:flex;flex-wrap:wrap;gap:7px">
+                  <sc-for list="{{ erg.mvpOptions }}" as="p" hint-placeholder-count="8">
+                    <div onClick="{{ p.onTap }}" style="padding:8px 12px;border-radius:99px;cursor:pointer;font:600 13px 'Barlow';border:1px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }}">{{ p.name }}</div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <button onClick="{{ erg.onSave }}" style="height:54px;border-radius:15px;border:none;background:#F2F5F4;color:#0B0E0F;font:700 16px 'Barlow';cursor:pointer">Ergebnis speichern</button>
+            </div>
+          </sc-if>
+
+          <!-- ────── STATISTIK ────── -->
+          <sc-if value="{{ isStats }}">
+            <div data-screen-label="Statistik" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;padding:4px;border-radius:14px;background:#14181A;border:1px solid rgba(255,255,255,.07);gap:4px">
+                <div onClick="{{ st.onSaison }}" style="flex:1;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:700 14px 'Barlow';background:{{ st.saisonBg }};color:{{ st.saisonFg }}">Saison 25/26</div>
+                <div onClick="{{ st.onAll }}" style="flex:1;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:700 14px 'Barlow';background:{{ st.allBg }};color:{{ st.allFg }}">All-Time</div>
+              </div>
+
+              <div style="display:flex;gap:7px;overflow:auto;padding-bottom:2px">
+                <sc-for list="{{ st.metrics }}" as="m" hint-placeholder-count="6">
+                  <div onClick="{{ m.onTap }}" style="flex:none;padding:8px 13px;border-radius:99px;cursor:pointer;white-space:nowrap;font:600 13px 'Barlow';border:1px solid {{ m.border }};background:{{ m.bg }};color:{{ m.fg }}">{{ m.label }}</div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;gap:8px;align-items:flex-end">
+                <sc-for list="{{ st.podium }}" as="p" hint-placeholder-count="3">
+                  <div onClick="{{ p.onTap }}" style="flex:1;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px">
+                    <div style="width:44px;height:44px;border-radius:50%;background:#232A2D;border:2px solid {{ p.ring }};display:flex;align-items:center;justify-content:center;font:700 14px 'Barlow';color:#E6ECEA">{{ p.initials }}</div>
+                    <div style="font:600 12px/1.2 'Barlow';text-align:center;color:#C9D2CF">{{ p.first }}</div>
+                    <div style="width:100%;border-radius:12px 12px 0 0;background:linear-gradient(180deg,{{ p.ring }},rgba(255,255,255,.03));height:{{ p.h }};display:flex;align-items:flex-start;justify-content:center;padding-top:8px;box-sizing:border-box">
+                      <span style="font:700 22px 'Barlow Condensed';color:#0B0E0F">{{ p.val }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:1px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.07)">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:#101416">
+                  <div style="width:20px;font:600 9.5px 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#5F6A67">#</div>
+                  <div style="flex:1;font:600 9.5px 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#5F6A67">Spieler</div>
+                  <div style="font:600 9.5px 'Barlow';letter-spacing:.1em;text-transform:uppercase;color:#5F6A67">{{ st.metricLabel }}</div>
+                </div>
+                <sc-for list="{{ st.rows }}" as="r" hint-placeholder-count="10">
+                  <div onClick="{{ r.onTap }}" style="position:relative;display:flex;align-items:center;gap:10px;padding:11px 14px;background:#14181A;cursor:pointer">
+                    <div style="position:absolute;left:0;top:0;bottom:0;background:rgba(47,191,110,.08);width:{{ r.pct }}"></div>
+                    <div style="position:relative;width:20px;font:700 14px 'Barlow Condensed';color:#6E7A76">{{ r.rank }}</div>
+                    <div style="position:relative;width:30px;height:30px;border-radius:50%;background:#232A2D;display:flex;align-items:center;justify-content:center;font:700 11px 'Barlow';color:#B9C4C0">{{ r.initials }}</div>
+                    <div style="position:relative;flex:1;min-width:0">
+                      <div style="font:600 14.5px 'Barlow'">{{ r.name }}</div>
+                      <div style="font:500 11.5px 'Barlow';color:#6E7A76">{{ r.sub }}</div>
+                    </div>
+                    <div style="position:relative;font:700 20px 'Barlow Condensed';color:#F2F5F4">{{ r.val }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ────── PROFIL ────── -->
+          <sc-if value="{{ isProfil }}">
+            <div data-screen-label="Spielerprofil" style="display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:20px;border:1px solid rgba(255,255,255,.07);background:#14181A;padding:18px;display:flex;align-items:center;gap:14px">
+                <div style="width:62px;height:62px;border-radius:50%;background:linear-gradient(135deg,#E23B3B,#2FBF6E);display:flex;align-items:center;justify-content:center;font:700 21px 'Barlow';color:#fff">{{ pro.initials }}</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font:700 26px/1.05 'Barlow Condensed';text-transform:uppercase">{{ pro.name }}</div>
+                  <div style="font:500 13px 'Barlow';color:#8A9490;margin-top:3px">{{ pro.pos }} · Stärke {{ pro.st }} · dabei seit {{ pro.seit }}</div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:7px">
+                <sc-for list="{{ pro.form }}" as="f" hint-placeholder-count="5">
+                  <div style="flex:1;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font:700 16px 'Barlow Condensed';background:{{ f.bg }};color:{{ f.fg }}">{{ f.k }}</div>
+                </sc-for>
+              </div>
+
+              <div>
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">Saison 25/26</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                  <sc-for list="{{ pro.saison }}" as="s" hint-placeholder-count="6">
+                    <div style="background:#14181A;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;gap:4px;align-items:center">
+                      <div style="font:700 24px/1 'Barlow Condensed';color:{{ s.color }}">{{ s.val }}</div>
+                      <div style="font:600 9.5px/1.1 'Barlow';letter-spacing:.08em;text-transform:uppercase;color:#6E7A76;text-align:center">{{ s.label }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div>
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76;margin-bottom:9px">All-Time</div>
+                <div style="display:flex;flex-direction:column;gap:1px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.07)">
+                  <sc-for list="{{ pro.allTime }}" as="a" hint-placeholder-count="6">
+                    <div style="display:flex;align-items:center;padding:11px 14px;background:#14181A">
+                      <div style="flex:1;font:500 14px 'Barlow';color:#B9C4C0">{{ a.label }}</div>
+                      <div style="font:700 18px 'Barlow Condensed'">{{ a.val }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- ────── NEUER TERMIN ────── -->
+          <sc-if value="{{ isNeu }}">
+            <div data-screen-label="Termin anlegen" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Datum</label>
+                <div style="display:flex;gap:7px;overflow:auto;padding-bottom:2px">
+                  <sc-for list="{{ neu.dates }}" as="d" hint-placeholder-count="5">
+                    <div onClick="{{ d.onTap }}" style="flex:none;width:62px;padding:10px 0;border-radius:14px;text-align:center;cursor:pointer;border:1px solid {{ d.border }};background:{{ d.bg }}">
+                      <div style="font:600 10px 'Barlow';letter-spacing:.08em;text-transform:uppercase;color:{{ d.sub }}">{{ d.wd }}</div>
+                      <div style="font:700 21px/1.1 'Barlow Condensed';margin-top:3px;color:{{ d.fg }}">{{ d.tag }}</div>
+                      <div style="font:500 10px 'Barlow';color:{{ d.sub }}">{{ d.monat }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Anpfiff</label>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ neu.times }}" as="t" hint-placeholder-count="4">
+                    <div onClick="{{ t.onTap }}" style="flex:1;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:700 15px 'Barlow';border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#6E7A76">Halle</label>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ neu.halls }}" as="h" hint-placeholder-count="3">
+                    <div onClick="{{ h.onTap }}" style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:14px;cursor:pointer;border:1px solid {{ h.border }};background:{{ h.bg }}">
+                      <div style="width:16px;height:16px;border-radius:50%;border:2px solid {{ h.dot }};display:flex;align-items:center;justify-content:center">
+                        <div style="width:7px;height:7px;border-radius:50%;background:{{ h.dotFill }}"></div>
+                      </div>
+                      <div style="flex:1;font:600 14.5px 'Barlow'">{{ h.name }}</div>
+                      <div style="font:500 12px 'Barlow';color:#6E7A76">{{ h.info }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;background:#14181A;border:1px solid rgba(255,255,255,.07)">
+                <div style="flex:1">
+                  <div style="font:600 14.5px 'Barlow'">Wöchentlich wiederholen</div>
+                  <div style="font:500 12px 'Barlow';color:#6E7A76">Legt die nächsten 8 Donnerstage an</div>
+                </div>
+                <div onClick="{{ neu.onRepeat }}" style="width:50px;height:30px;border-radius:99px;cursor:pointer;padding:3px;box-sizing:border-box;background:{{ neu.repeatBg }};display:flex;justify-content:{{ neu.repeatJustify }}">
+                  <div style="width:24px;height:24px;border-radius:50%;background:#fff"></div>
+                </div>
+              </div>
+
+              <button onClick="{{ neu.onCreate }}" style="height:54px;border-radius:15px;border:none;background:#2FBF6E;color:#062012;font:700 16px 'Barlow';cursor:pointer">Termin anlegen</button>
+            </div>
+          </sc-if>
+
+          <!-- ────── GRUPPE ────── -->
+          <sc-if value="{{ isGruppe }}">
+            <div data-screen-label="Gruppe" style="display:flex;flex-direction:column;gap:16px">
+              <div style="border-radius:18px;border:1px solid rgba(47,191,110,.3);background:linear-gradient(135deg,rgba(226,59,59,.12),rgba(47,191,110,.12));padding:16px">
+                <div style="font:600 10px 'Barlow';letter-spacing:.16em;text-transform:uppercase;color:#8A9490">Einladungs-Code</div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+                  <div style="flex:1;font:700 30px/1 'Barlow Condensed';letter-spacing:.1em">HALLE-OST</div>
+                  <button onClick="{{ gr.onCopy }}" style="height:38px;padding:0 15px;border-radius:11px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#F2F5F4;font:600 13px 'Barlow';cursor:pointer">{{ gr.copyLabel }}</button>
+                </div>
+                <div style="font:500 12.5px 'Barlow';color:#8A9490;margin-top:8px">{{ gr.count }} Spieler in der Gruppe · 3 Organisatoren</div>
+              </div>
+
+              <div style="display:flex;gap:7px">
+                <sc-for list="{{ gr.filters }}" as="f" hint-placeholder-count="3">
+                  <div onClick="{{ f.onTap }}" style="flex:1;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font:600 13px 'Barlow';border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.fg }}">{{ f.label }}</div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:1px;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.07)">
+                <sc-for list="{{ gr.members }}" as="m" hint-placeholder-count="10">
+                  <div onClick="{{ m.onTap }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;background:#14181A;cursor:pointer">
+                    <div style="width:32px;height:32px;border-radius:50%;background:#232A2D;display:flex;align-items:center;justify-content:center;font:700 11.5px 'Barlow';color:#B9C4C0">{{ m.initials }}</div>
+                    <div style="flex:1;min-width:0">
+                      <div style="font:600 14.5px 'Barlow'">{{ m.name }}</div>
+                      <div style="font:500 11.5px 'Barlow';color:#6E7A76">{{ m.sub }}</div>
+                    </div>
+                    <div style="padding:4px 9px;border-radius:99px;font:600 10px 'Barlow';letter-spacing:.08em;text-transform:uppercase;border:1px solid {{ m.roleBorder }};color:{{ m.roleFg }}">{{ m.role }}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <button onClick="{{ gr.onLogout }}" style="height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#8A9490;font:600 14px 'Barlow';cursor:pointer">Abmelden</button>
+            </div>
+          </sc-if>
+
+        </div>
+
+        <!-- toast -->
+        <sc-if value="{{ toast }}">
+          <div style="position:absolute;left:20px;right:20px;bottom:104px;padding:13px 16px;border-radius:14px;background:#F2F5F4;color:#0B0E0F;font:600 14px 'Barlow';box-shadow:0 14px 40px rgba(0,0,0,.5);animation:popin .22s ease;z-index:80">{{ toast }}</div>
+        </sc-if>
+
+        <!-- tab bar -->
+        <div style="flex:none;display:flex;padding:8px 10px 26px;background:rgba(11,14,15,.94);border-top:1px solid rgba(255,255,255,.07);backdrop-filter:blur(12px)">
+          <div onClick="{{ nav.start }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 0;color:{{ nav.startColor }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            <span style="font:600 10px 'Barlow';letter-spacing:.04em">Start</span>
+          </div>
+          <div onClick="{{ nav.termine }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 0;color:{{ nav.termineColor }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span style="font:600 10px 'Barlow';letter-spacing:.04em">Termine</span>
+          </div>
+          <div onClick="{{ nav.stats }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 0;color:{{ nav.statsColor }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M5 20V12M12 20V4M19 20v-5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+            <span style="font:600 10px 'Barlow';letter-spacing:.04em">Statistik</span>
+          </div>
+          <div onClick="{{ nav.gruppe }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:6px 0;color:{{ nav.gruppeColor }}">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M16 5.5a3.2 3.2 0 010 5M18 14.8c2 .8 3 2.7 3 5.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span style="font:600 10px 'Barlow';letter-spacing:.04em">Gruppe</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </x-import>
+
+  <div style="max-width:420px;text-align:center;font:500 12.5px/1.6 'Barlow';color:#5F6A67">
+    Voll klickbar: einloggen (Code + Name sind schon vorausgefüllt), Termin öffnen, Teams per Tipp aufstellen oder auto-balancieren, Ergebnis mit Torschützen erfassen — die Statistiken rechnen live mit.
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:520,&quot;height&quot;:1060}}">
+const NAMES = ["Markus Gruber","Stefan Huber","Lukas Wagner","Thomas Berger","Michael Pichler","Andreas Steiner","Daniel Mayr","Christoph Leitner","Patrick Fuchs","Bernhard Moser","Florian Egger","Manuel Brunner","Dominik Hofer","Alexander Reiter","Philipp Schwarz","Simon Wallner","Tobias Aigner","Martin Ebner","Kevin Draxler","Fabian Lang","Jakob Ortner","René Winkler","Sebastian Koller","Georg Auer","Nico Perner","Raphael Stadler","Julian Haas","Matthias Kern","Elias Baumgartner","Oliver Reisinger","Clemens Vogl","David Sommer"];
+const POS = ["Tor","Abwehr","Mitte","Sturm"];
+const RED = "#E23B3B", GRN = "#2FBF6E", GOLD = "#F4D35E", INK = "#F2F5F4", MUT = "#6E7A76";
+
+function seeded(s0) { let s = s0 >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+function initials(n) { const p = n.split(" "); return (p[0][0] + (p[1] ? p[1][0] : "")).toUpperCase(); }
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const r = seeded(4711);
+    const players = NAMES.map((name, i) => {
+      const sp = 5 + Math.floor(r() * 14);
+      const siege = Math.round(sp * (0.2 + r() * 0.55));
+      const unent = Math.round((sp - siege) * r() * 0.45);
+      const nied = Math.max(0, sp - siege - unent);
+      const tore = Math.floor(r() * sp * 1.6);
+      const eigen = r() < 0.22 ? 1 : 0;
+      const mvp = Math.floor(r() * r() * 6);
+      const diff = Math.round((siege - nied) * (1.2 + r() * 2.2));
+      const st = 1 + Math.round(r() * 4);
+      const jahre = 1 + Math.floor(r() * 8);
+      const form = [0, 1, 2, 3, 4].map(() => { const x = r(); return x < 0.45 ? "S" : x < 0.65 ? "U" : "N"; });
+      let streak = 1; for (let k = 1; k < form.length; k++) { if (form[k] === form[0]) streak++; else break; }
+      return {
+        id: i, name, initials: initials(name), pos: POS[Math.floor(r() * 4)], st, jahre,
+        seit: 2026 - jahre, form, streakKind: form[0], streak,
+        s: { sp, siege, unent, nied, tore, eigen, mvp, diff },
+        a: { sp: sp * (2 + jahre), siege: siege * (2 + jahre), tore: tore * (2 + jahre) + Math.floor(r() * 20), mvp: mvp * (1 + jahre), eigen: eigen * (1 + jahre) + Math.floor(r() * 3), diff: diff * (1 + jahre) }
+      };
+    });
+    players[0].name = "Markus Gruber";
+
+    const termine = [
+      { id: 1, d: "2026-09-10", zeit: "20:00", ort: "Halle Ost", zusagen: 14, gespielt: false },
+      { id: 2, d: "2026-09-17", zeit: "20:00", ort: "Halle Ost", zusagen: 9, gespielt: false },
+      { id: 3, d: "2026-09-24", zeit: "19:00", ort: "Sporthalle Süd", zusagen: 4, gespielt: false },
+      { id: 4, d: "2026-09-03", zeit: "20:00", ort: "Halle Ost", gespielt: true, rot: 6, gruen: 4 },
+      { id: 5, d: "2026-08-27", zeit: "20:00", ort: "Halle Ost", gespielt: true, rot: 3, gruen: 3 },
+      { id: 6, d: "2026-08-20", zeit: "20:00", ort: "Sporthalle Süd", gespielt: true, rot: 2, gruen: 7 },
+      { id: 7, d: "2026-08-13", zeit: "20:00", ort: "Halle Ost", gespielt: true, rot: 5, gruen: 4 }
+    ];
+
+    this.state = {
+      screen: "login", code: "HALLE-OST", uname: "Markus Gruber",
+      players, termine, meId: 0, dabei: true,
+      openTerminId: 1, teams: { rot: [], gruen: [] },
+      goals: {}, ownRot: 0, ownGruen: 0, mvp: null,
+      scope: "saison", metric: "tore", profilId: 0,
+      neuDate: 0, neuTime: "20:00", neuHall: 0, neuRepeat: true,
+      grFilter: "Alle", copied: false, toast: "", history: []
+    };
+  }
+
+  // ── helpers ─────────────────────────────────────────────
+  fmtDate(iso, style) {
+    const wd = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+    const mo = ["Jän", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+    const dt = new Date(iso + "T12:00:00");
+    if (style === "tag") return pad(dt.getDate());
+    if (style === "monat") return mo[dt.getMonth()];
+    if (style === "wd") return wd[dt.getDay()];
+    return wd[dt.getDay()] + " " + pad(dt.getDate()) + "." + pad(dt.getMonth() + 1) + ".";
+  }
+  go(screen, extra) { this.setState(Object.assign({ screen, history: this.state.history.concat([this.state.screen]) }, extra || {})); }
+  back = () => { const h = this.state.history.slice(); const prev = h.pop() || "start"; this.setState({ screen: prev, history: h }); };
+  flash(msg) { this.setState({ toast: msg }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ toast: "" }), 2200); }
+  byId(id) { return this.state.players.find(p => p.id === id); }
+  termin(id) { return this.state.termine.find(t => t.id === id); }
+  zusagenIds(t) { const n = t.zusagen || 0; return this.state.players.slice(0, n).map(p => p.id); }
+
+  // ── header ──────────────────────────────────────────────
+  head() {
+    const s = this.state.screen;
+    if (s === "start") return ["Servus " + this.state.uname.split(" ")[0], "Hallenkick Donnerstag"];
+    if (s === "termine") return ["Termine", "Saison 25/26"];
+    if (s === "stats") return ["Statistik", this.state.scope === "saison" ? "Saison 25/26" : "Seit 2016"];
+    if (s === "gruppe") return ["Gruppe", "Halle Ost"];
+    if (s === "detail") { const t = this.termin(this.state.openTerminId); return [this.fmtDate(t.d), t.zeit + " · " + t.ort]; }
+    if (s === "ergebnis") return ["Ergebnis", "Rot gegen Grün"];
+    if (s === "profil") return [this.byId(this.state.profilId).name, "Spielerprofil"];
+    if (s === "neu") return ["Neuer Termin", "Anlegen"];
+    return ["", ""];
+  }
+
+  autoTeams = () => {
+    const ids = this.zusagenIds(this.termin(this.state.openTerminId));
+    const sorted = ids.map(i => this.byId(i)).sort((a, b) => b.st - a.st || b.s.tore - a.s.tore);
+    const rot = [], gruen = [];
+    sorted.forEach((p, i) => { (i % 4 === 0 || i % 4 === 3 ? rot : gruen).push(p.id); });
+    this.setState({ teams: { rot, gruen } });
+    this.flash("Teams nach Stärke ausbalanciert");
+  };
+
+  metricDef(key) {
+    const sc = this.state.scope;
+    const M = {
+      tore: { label: "Tore", get: p => (sc === "saison" ? p.s.tore : p.a.tore), sub: p => (sc === "saison" ? p.s.sp : p.a.sp) + " Spiele" },
+      quote: { label: "Siegquote", get: p => Math.round(((sc === "saison" ? p.s.siege : p.a.siege) / Math.max(1, sc === "saison" ? p.s.sp : p.a.sp)) * 100), fmt: v => v + "%", sub: p => (sc === "saison" ? p.s.siege : p.a.siege) + " Siege" },
+      siege: { label: "Siege", get: p => (sc === "saison" ? p.s.siege : p.a.siege), sub: p => sc === "saison" ? p.s.siege + "S · " + p.s.unent + "U · " + p.s.nied + "N" : p.a.sp + " Spiele" },
+      teilnahmen: { label: "Teilnahmen", get: p => (sc === "saison" ? p.s.sp : p.a.sp), sub: p => sc === "saison" ? Math.round((p.s.sp / 18) * 100) + "% der Termine" : "seit " + p.seit },
+      diff: { label: "Torverhältnis", get: p => (sc === "saison" ? p.s.diff : p.a.diff), fmt: v => (v > 0 ? "+" : "") + v, sub: p => "als Teamspieler" },
+      streak: { label: "Serie", get: p => (p.streakKind === "S" ? p.streak : 0), fmt: v => v > 0 ? v + "×S" : "–", sub: p => p.form.join(" ") },
+      mvp: { label: "MVP", get: p => (sc === "saison" ? p.s.mvp : p.a.mvp), sub: p => "Auszeichnungen" },
+      eigen: { label: "Eigentore", get: p => (sc === "saison" ? p.s.eigen : p.a.eigen), sub: p => "Hall of Shame" }
+    };
+    return M[key];
+  }
+
+  renderVals() {
+    const S = this.state, me = this.byId(S.meId);
+    const [headTitle, headSub] = this.head();
+    const chip = (on, col) => on
+      ? { bg: col, fg: "#0B0E0F", border: col }
+      : { bg: "transparent", fg: "#8A9490", border: "rgba(255,255,255,.12)" };
+
+    const v = {
+      isLogin: S.screen === "login",
+      inApp: S.screen !== "login",
+      isStart: S.screen === "start", isTermine: S.screen === "termine", isStats: S.screen === "stats",
+      isGruppe: S.screen === "gruppe", isDetail: S.screen === "detail", isErgebnis: S.screen === "ergebnis",
+      isProfil: S.screen === "profil", isNeu: S.screen === "neu",
+      headTitle, headSub,
+      showBack: ["detail", "ergebnis", "profil", "neu"].indexOf(S.screen) >= 0,
+      showAvatar: ["start", "gruppe"].indexOf(S.screen) >= 0,
+      meInitials: me.initials, back: this.back, toast: S.toast,
+      code: S.code, uname: S.uname,
+      onCode: e => this.setState({ code: e.target.value }),
+      onName: e => this.setState({ uname: e.target.value }),
+      doLogin: () => this.setState({ screen: "start", history: [] }),
+      goNeu: () => this.go("neu"),
+      nav: {
+        start: () => this.setState({ screen: "start", history: [] }),
+        termine: () => this.setState({ screen: "termine", history: [] }),
+        stats: () => this.setState({ screen: "stats", history: [] }),
+        gruppe: () => this.setState({ screen: "gruppe", history: [] }),
+        startColor: S.screen === "start" ? INK : "#4E5754",
+        termineColor: ["termine", "detail", "ergebnis", "neu"].indexOf(S.screen) >= 0 ? INK : "#4E5754",
+        statsColor: ["stats", "profil"].indexOf(S.screen) >= 0 ? INK : "#4E5754",
+        gruppeColor: S.screen === "gruppe" ? INK : "#4E5754"
+      }
+    };
+
+    // ── start ──
+    const nt = S.termine.filter(t => !t.gespielt)[0];
+    v.next = {
+      datum: this.fmtDate(nt.d), zeit: nt.zeit, ort: nt.ort, countdown: "2 Tage",
+      zusagenText: nt.zusagen + " / 16 zugesagt",
+      fillPct: Math.min(100, Math.round((nt.zusagen / 16) * 100)) + "%",
+      yesBg: S.dabei ? GRN : "#1C2124", yesFg: S.dabei ? "#062012" : "#8A9490",
+      noBg: S.dabei ? "#1C2124" : RED, noFg: S.dabei ? "#8A9490" : "#fff",
+      onYes: () => { this.setState({ dabei: true }); this.flash("Zusage gespeichert"); },
+      onNo: () => { this.setState({ dabei: false }); this.flash("Absage gespeichert"); },
+      onOpen: () => this.go("detail", { openTerminId: nt.id })
+    };
+    v.meTiles = [
+      { label: "Spiele", val: me.s.sp, color: INK },
+      { label: "Tore", val: me.s.tore, color: GOLD },
+      { label: "Siegquote", val: Math.round((me.s.siege / Math.max(1, me.s.sp)) * 100) + "%", color: GRN },
+      { label: "MVP", val: me.s.mvp, color: INK }
+    ];
+    const formCell = k => ({ k, bg: k === "S" ? "rgba(47,191,110,.18)" : k === "N" ? "rgba(226,59,59,.16)" : "#1C2124", fg: k === "S" ? "#6FD8A2" : k === "N" ? "#F08585" : "#8A9490" });
+    v.meForm = me.form.map(formCell);
+
+    const lg = S.termine.filter(t => t.gespielt)[0];
+    v.lastGame = {
+      score: lg.rot + " : " + lg.gruen,
+      rotTop: this.fmtDate(lg.d), gruenTop: lg.ort,
+      onOpen: () => this.go("detail", { openTerminId: lg.id })
+    };
+    v.topThree = S.players.slice().sort((a, b) => b.s.tore - a.s.tore).slice(0, 3).map((p, i) => ({
+      rank: i + 1, name: p.name, initials: p.initials, val: p.s.tore,
+      onTap: () => this.go("profil", { profilId: p.id })
+    }));
+
+    // ── termine ──
+    const mkT = t => ({
+      tag: this.fmtDate(t.d, "tag"), monat: this.fmtDate(t.d, "monat"), wochentag: this.fmtDate(t.d, "wd"),
+      zeit: t.zeit, ort: t.ort, zusagen: t.zusagen, score: t.gespielt ? t.rot + " : " + t.gruen : "",
+      zusagenColor: (t.zusagen || 0) >= 12 ? GRN : (t.zusagen || 0) >= 8 ? GOLD : RED,
+      onOpen: () => this.go("detail", { openTerminId: t.id })
+    });
+    v.upcoming = S.termine.filter(t => !t.gespielt).map(mkT);
+    v.past = S.termine.filter(t => t.gespielt).map(mkT);
+
+    // ── detail ──
+    const t = this.termin(S.openTerminId);
+    const zus = this.zusagenIds(t);
+    const rotIds = S.teams.rot.filter(i => zus.indexOf(i) >= 0);
+    const gruenIds = S.teams.gruen.filter(i => zus.indexOf(i) >= 0);
+    const poolIds = zus.filter(i => rotIds.indexOf(i) < 0 && gruenIds.indexOf(i) < 0);
+    const sum = ids => ids.reduce((a, i) => a + this.byId(i).st, 0);
+    const bal = sum(rotIds) - sum(gruenIds);
+    const move = (id, to) => this.setState(st => {
+      const rot = st.teams.rot.filter(x => x !== id), gruen = st.teams.gruen.filter(x => x !== id);
+      if (to === "rot") rot.push(id); if (to === "gruen") gruen.push(id);
+      return { teams: { rot, gruen } };
+    });
+    v.det = {
+      zusagen: zus.length, eingeteilt: rotIds.length + gruenIds.length,
+      balance: (bal > 0 ? "+" : "") + bal, balanceColor: Math.abs(bal) <= 1 ? GRN : GOLD,
+      rotInfo: rotIds.length + " Spieler · Ø " + (rotIds.length ? (sum(rotIds) / rotIds.length).toFixed(1) : "0"),
+      gruenInfo: gruenIds.length + " Spieler · Ø " + (gruenIds.length ? (sum(gruenIds) / gruenIds.length).toFixed(1) : "0"),
+      rot: rotIds.map(i => { const p = this.byId(i); return { name: p.name.split(" ")[0], initials: p.initials, st: p.st, onTap: () => move(i, null) }; }),
+      gruen: gruenIds.map(i => { const p = this.byId(i); return { name: p.name.split(" ")[0], initials: p.initials, st: p.st, onTap: () => move(i, null) }; }),
+      pool: poolIds.map(i => { const p = this.byId(i); return { name: p.name, initials: p.initials, st: p.st, pos: p.pos, toRot: () => move(i, "rot"), toGruen: () => move(i, "gruen") }; }),
+      onAuto: this.autoTeams,
+      onClear: () => this.setState({ teams: { rot: [], gruen: [] } }),
+      cta: t.gespielt ? "Ergebnis bearbeiten" : "Ergebnis erfassen",
+      onErgebnis: () => {
+        if (!rotIds.length && !gruenIds.length) { this.autoTeams(); }
+        this.go("ergebnis");
+      }
+    };
+
+    // ── ergebnis ──
+    const g = S.goals;
+    const setGoal = (id, d) => this.setState(st => { const gg = Object.assign({}, st.goals); gg[id] = Math.max(0, (gg[id] || 0) + d); return { goals: gg }; });
+    const mk = i => { const p = this.byId(i); return { name: p.name, goals: g[i] || 0, color: (g[i] || 0) > 0 ? GOLD : "#4E5754", plus: () => setGoal(i, 1), minus: () => setGoal(i, -1) }; };
+    const rScore = rotIds.reduce((a, i) => a + (g[i] || 0), 0) + S.ownGruen;
+    const gScore = gruenIds.reduce((a, i) => a + (g[i] || 0), 0) + S.ownRot;
+    v.erg = {
+      rotScore: rScore, gruenScore: gScore,
+      rot: rotIds.map(mk), gruen: gruenIds.map(mk),
+      ownRot: S.ownRot, ownGruen: S.ownGruen,
+      ownRotPlus: () => this.setState(st => ({ ownRot: st.ownRot + 1 })),
+      ownRotMinus: () => this.setState(st => ({ ownRot: Math.max(0, st.ownRot - 1) })),
+      ownGruenPlus: () => this.setState(st => ({ ownGruen: st.ownGruen + 1 })),
+      ownGruenMinus: () => this.setState(st => ({ ownGruen: Math.max(0, st.ownGruen - 1) })),
+      mvpOptions: rotIds.concat(gruenIds).map(i => {
+        const p = this.byId(i), on = S.mvp === i;
+        return Object.assign({ name: p.name.split(" ")[0], onTap: () => this.setState({ mvp: i }) }, chip(on, GOLD));
+      }),
+      onSave: () => {
+        this.setState(st => {
+          const termine = st.termine.map(x => x.id === st.openTerminId ? Object.assign({}, x, { gespielt: true, rot: rScore, gruen: gScore }) : x);
+          const players = st.players.map(p => {
+            const inRot = rotIds.indexOf(p.id) >= 0, inGruen = gruenIds.indexOf(p.id) >= 0;
+            if (!inRot && !inGruen) return p;
+            const win = inRot ? rScore > gScore : gScore > rScore;
+            const draw = rScore === gScore;
+            const s = Object.assign({}, p.s, {
+              sp: p.s.sp + 1, tore: p.s.tore + (st.goals[p.id] || 0),
+              siege: p.s.siege + (win ? 1 : 0), unent: p.s.unent + (draw ? 1 : 0),
+              nied: p.s.nied + (!win && !draw ? 1 : 0),
+              mvp: p.s.mvp + (st.mvp === p.id ? 1 : 0),
+              diff: p.s.diff + (inRot ? rScore - gScore : gScore - rScore)
+            });
+            const a = Object.assign({}, p.a, { sp: p.a.sp + 1, tore: p.a.tore + (st.goals[p.id] || 0), siege: p.a.siege + (win ? 1 : 0), mvp: p.a.mvp + (st.mvp === p.id ? 1 : 0), diff: p.a.diff + (inRot ? rScore - gScore : gScore - rScore) });
+            return Object.assign({}, p, { s, a, form: [win ? "S" : draw ? "U" : "N"].concat(p.form.slice(0, 4)) });
+          });
+          return { termine, players, screen: "stats", history: [] };
+        });
+        this.flash("Ergebnis " + rScore + ":" + gScore + " gespeichert — Statistik aktualisiert");
+      }
+    };
+
+    // ── statistik ──
+    const def = this.metricDef(S.metric);
+    const fmt = def.fmt || (x => "" + x);
+    const ranked = S.players.slice().map(p => ({ p, raw: def.get(p) })).sort((a, b) => b.raw - a.raw);
+    const max = Math.max(1, ranked[0].raw);
+    v.st = {
+      onSaison: () => this.setState({ scope: "saison" }), onAll: () => this.setState({ scope: "alltime" }),
+      saisonBg: S.scope === "saison" ? "#F2F5F4" : "transparent", saisonFg: S.scope === "saison" ? "#0B0E0F" : "#8A9490",
+      allBg: S.scope === "alltime" ? "#F2F5F4" : "transparent", allFg: S.scope === "alltime" ? "#0B0E0F" : "#8A9490",
+      metricLabel: def.label,
+      metrics: ["tore", "quote", "siege", "teilnahmen", "diff", "streak", "mvp", "eigen"].map(k => Object.assign(
+        { label: this.metricDef(k).label, onTap: () => this.setState({ metric: k }) }, chip(S.metric === k, GRN))),
+      podium: [ranked[1], ranked[0], ranked[2]].map((e, i) => ({
+        initials: e.p.initials, first: e.p.name.split(" ")[0], val: fmt(e.raw),
+        ring: i === 1 ? GOLD : i === 0 ? "#B9C4C0" : "#B08D57",
+        h: (i === 1 ? 92 : i === 0 ? 70 : 56) + "px",
+        onTap: () => this.go("profil", { profilId: e.p.id })
+      })),
+      rows: ranked.map((e, i) => ({
+        rank: i + 1, name: e.p.name, initials: e.p.initials, val: fmt(e.raw), sub: def.sub(e.p),
+        pct: Math.round((e.raw / max) * 100) + "%",
+        onTap: () => this.go("profil", { profilId: e.p.id })
+      }))
+    };
+
+    // ── profil ──
+    const pp = this.byId(S.profilId);
+    v.pro = {
+      name: pp.name, initials: pp.initials, pos: pp.pos, st: pp.st, seit: pp.seit,
+      form: pp.form.map(formCell),
+      saison: [
+        { label: "Spiele", val: pp.s.sp, color: INK },
+        { label: "Tore", val: pp.s.tore, color: GOLD },
+        { label: "Siegquote", val: Math.round((pp.s.siege / Math.max(1, pp.s.sp)) * 100) + "%", color: GRN },
+        { label: "S / U / N", val: pp.s.siege + "-" + pp.s.unent + "-" + pp.s.nied, color: INK },
+        { label: "Torverhältnis", val: (pp.s.diff > 0 ? "+" : "") + pp.s.diff, color: pp.s.diff >= 0 ? GRN : RED },
+        { label: "MVP", val: pp.s.mvp, color: INK }
+      ],
+      allTime: [
+        { label: "Spiele gesamt", val: pp.a.sp },
+        { label: "Tore gesamt", val: pp.a.tore },
+        { label: "Siege gesamt", val: pp.a.siege },
+        { label: "Siegquote all-time", val: Math.round((pp.a.siege / Math.max(1, pp.a.sp)) * 100) + "%" },
+        { label: "MVP-Titel", val: pp.a.mvp },
+        { label: "Eigentore", val: pp.a.eigen }
+      ]
+    };
+
+    // ── neuer termin ──
+    const base = new Date("2026-09-10T12:00:00");
+    v.neu = {
+      dates: [0, 1, 2, 3, 4, 5].map(k => {
+        const d = new Date(base.getTime() + k * 7 * 86400000);
+        const iso = d.toISOString().slice(0, 10), on = S.neuDate === k;
+        return {
+          wd: this.fmtDate(iso, "wd"), tag: this.fmtDate(iso, "tag"), monat: this.fmtDate(iso, "monat"),
+          bg: on ? "rgba(47,191,110,.16)" : "#14181A", border: on ? GRN : "rgba(255,255,255,.08)",
+          fg: on ? "#fff" : INK, sub: on ? "#9BD9BA" : MUT,
+          onTap: () => this.setState({ neuDate: k })
+        };
+      }),
+      times: ["19:00", "20:00", "21:00"].map(x => Object.assign({ label: x, onTap: () => this.setState({ neuTime: x }) }, chip(S.neuTime === x, GRN))),
+      halls: [
+        { name: "Halle Ost", info: "Standard · 16 Plätze" },
+        { name: "Sporthalle Süd", info: "größer · 20 Plätze" },
+        { name: "Turnsaal BG Nord", info: "eng · 12 Plätze" }
+      ].map((h, i) => ({
+        name: h.name, info: h.info,
+        bg: S.neuHall === i ? "rgba(47,191,110,.1)" : "#14181A",
+        border: S.neuHall === i ? "rgba(47,191,110,.5)" : "rgba(255,255,255,.07)",
+        dot: S.neuHall === i ? GRN : "rgba(255,255,255,.2)",
+        dotFill: S.neuHall === i ? GRN : "transparent",
+        onTap: () => this.setState({ neuHall: i })
+      })),
+      repeatBg: S.neuRepeat ? GRN : "#2A3134",
+      repeatJustify: S.neuRepeat ? "flex-end" : "flex-start",
+      onRepeat: () => this.setState(st => ({ neuRepeat: !st.neuRepeat })),
+      onCreate: () => {
+        const d = new Date(base.getTime() + S.neuDate * 7 * 86400000).toISOString().slice(0, 10);
+        const halls = ["Halle Ost", "Sporthalle Süd", "Turnsaal BG Nord"];
+        this.setState(st => ({
+          termine: st.termine.concat([{ id: Date.now(), d, zeit: st.neuTime, ort: halls[st.neuHall], zusagen: 0, gespielt: false }])
+            .sort((a, b) => (a.gespielt === b.gespielt ? (a.gespielt ? b.d.localeCompare(a.d) : a.d.localeCompare(b.d)) : a.gespielt ? 1 : -1)),
+          screen: "termine", history: []
+        }));
+        this.flash("Termin angelegt — Gruppe wurde benachrichtigt");
+      }
+    };
+
+    // ── gruppe ──
+    const roleOf = p => p.id === 0 ? "Admin" : p.id < 3 ? "Organisator" : "Spieler";
+    const filtered = S.players.filter(p => S.grFilter === "Alle" ? true : S.grFilter === "Organisatoren" ? roleOf(p) !== "Spieler" : p.s.sp >= 10);
+    v.gr = {
+      count: S.players.length,
+      copyLabel: S.copied ? "Kopiert" : "Teilen",
+      onCopy: () => { this.setState({ copied: true }); this.flash("Code kopiert — ab in die WhatsApp-Gruppe"); },
+      filters: ["Alle", "Organisatoren", "Stammspieler"].map(f => Object.assign({ label: f, onTap: () => this.setState({ grFilter: f }) }, chip(S.grFilter === f, "#F2F5F4"))),
+      members: filtered.map(p => {
+        const role = roleOf(p);
+        return {
+          name: p.name, initials: p.initials, role,
+          sub: p.s.sp + " Spiele · " + p.s.tore + " Tore · Stärke " + p.st,
+          roleFg: role === "Admin" ? GOLD : role === "Organisator" ? GRN : "#6E7A76",
+          roleBorder: role === "Admin" ? "rgba(244,211,94,.4)" : role === "Organisator" ? "rgba(47,191,110,.4)" : "rgba(255,255,255,.1)",
+          onTap: () => this.go("profil", { profilId: p.id })
+        };
+      }),
+      onLogout: () => this.setState({ screen: "login", history: [] })
+    };
+
+    return v;
+  }
+}
+
+</script>
+</body>
+</html>
