@@ -1,6 +1,7 @@
 import type { CollectionConfig, Where } from 'payload';
 
 import { membershipGroupIds } from '../access/helpers';
+import { ADMIN_PANEL_ALLOWED_EMAIL } from '../lib/admin-access';
 
 /**
  * Join table: user × group, with the per-group role and strength rating.
@@ -21,13 +22,22 @@ export const Memberships: CollectionConfig = {
       if (adminGroupIds.length) or.push({ group: { in: adminGroupIds } });
       return { or };
     },
-    // Rows are only ever created by server-side logic that already knows
-    // it's doing the right thing — the `/groups/join` endpoint and the
-    // auto-admin-on-create hook, both of which use `overrideAccess: true`.
-    // No client request should be able to create one directly (that would
-    // let a player grant themselves admin, or join without going through
-    // invite-code validation).
-    create: () => false,
+    // Normal app usage never creates a row here directly — the
+    // `/groups/join` endpoint and the auto-admin-on-create hook do it
+    // themselves, both with `overrideAccess: true`. A regular app account
+    // still can't: letting any signed-in user hit this directly would let
+    // a player grant themselves admin, or join a group without going
+    // through invite-code validation at all. The one exception is exactly
+    // who can already reach the CMS — an admin-panel-eligible account
+    // (`ADMIN_PANEL_ALLOWED_EMAIL` or `adminPanelAccess === true`, same
+    // check as `Users.ts`'s `access.admin`) — so a membership can now also
+    // be added by hand from `/admin` (e.g. fixing up seed/import data, or
+    // adding someone without going through an invite code), without
+    // opening this up to the app's own public API surface.
+    create: ({ req }) => {
+      if (!req.user) return false;
+      return req.user.email === ADMIN_PANEL_ALLOWED_EMAIL || req.user.adminPanelAccess === true;
+    },
     // Admin/organizer of the *membership's own group* can edit it (role,
     // strength — §3.3/§3.4). A regular player can't edit their own row,
     // which is what keeps `strength` from being self-reported.

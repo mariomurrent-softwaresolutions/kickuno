@@ -34,6 +34,11 @@ export async function eligiblePlayerIds(
     );
   }
 
+  return allGroupMemberIds(payload, groupId);
+}
+
+/** Every real member's user id for one group — every eligibility question ultimately bottoms out here. */
+export async function allGroupMemberIds(payload: Payload, groupId: string | number): Promise<(string | number)[]> {
   const { docs } = await payload.find({
     collection: 'memberships',
     where: { group: { equals: groupId } },
@@ -148,4 +153,71 @@ export async function playerSummaries(
       position: u.position ?? undefined,
       ...(strengthById ? { strength: strengthById.get(String(u.id)) ?? 3 } : {}),
     }));
+}
+
+export type NotAttendingPlayer = PlayerSummary & { rsvpStatus: 'no' | 'none' };
+
+/**
+ * The four buckets a fixture's team-builder screen needs in one call
+ * (§4.5): `pool` (eligible, unassigned), `red`/`green` (assigned — always
+ * eligible themselves, by construction), and `notAttending` — every other
+ * real group member, tagged with why they're not in the pool (`'no'` =
+ * explicitly declined, `'none'` = never responded). Only ever non-empty
+ * when `features.rsvp` is on: with it off, `eligiblePlayerIds()` already
+ * returns every member, so nobody is left over to appear here.
+ *
+ * Not in the original plan — added so an admin/organizer can still pull in
+ * someone who hasn't confirmed (or said no) when a fixture needs more
+ * players, straight from this same screen (`PATCH .../lineup` marks them
+ * attending as a side effect the moment they're assigned — see that
+ * handler). Shared by the GET/PATCH lineup endpoints and auto-balance, so
+ * all three keep returning the same shape.
+ */
+export async function buildLineupSummaries(
+  payload: Payload,
+  groupId: string | number,
+  fixtureId: string | number,
+  eligibleIds: (string | number)[],
+  redIds: (string | number)[],
+  greenIds: (string | number)[],
+  strengthById: Map<string, number> | null,
+): Promise<{ pool: PlayerSummary[]; red: PlayerSummary[]; green: PlayerSummary[]; notAttending: NotAttendingPlayer[] }> {
+  const assigned = new Set([...redIds, ...greenIds].map(String));
+  const poolIds = eligibleIds.filter((id) => !assigned.has(String(id)));
+
+  const memberIds = await allGroupMemberIds(payload, groupId);
+  const eligibleSet = new Set(eligibleIds.map(String));
+  const notAttendingIds = memberIds.filter((id) => !eligibleSet.has(String(id)) && !assigned.has(String(id)));
+
+  const notAttendingStatusById = new Map<string, 'no' | 'none'>();
+  if (notAttendingIds.length > 0) {
+    // Only explicit "no" rows come back here — anyone in `notAttendingIds`
+    // with no row at all (never responded) simply won't appear, and is
+    // labelled 'none' by the `?? 'none'` fallback below.
+    const { docs } = await payload.find({
+      collection: 'rsvps',
+      where: { fixture: { equals: fixtureId }, user: { in: notAttendingIds } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    });
+    for (const r of docs) {
+      const uid = typeof r.user === 'object' && r.user !== null ? (r.user as { id: string | number }).id : (r.user as string | number);
+      notAttendingStatusById.set(String(uid), r.status === 'no' ? 'no' : 'none');
+    }
+  }
+
+  const [pool, red, green, notAttendingSummaries] = await Promise.all([
+    playerSummaries(payload, poolIds, strengthById),
+    playerSummaries(payload, redIds, strengthById),
+    playerSummaries(payload, greenIds, strengthById),
+    playerSummaries(payload, notAttendingIds, strengthById),
+  ]);
+
+  const notAttending: NotAttendingPlayer[] = notAttendingSummaries.map((p) => ({
+    ...p,
+    rsvpStatus: notAttendingStatusById.get(String(p.id)) ?? 'none',
+  }));
+
+  return { pool, red, green, notAttending };
 }

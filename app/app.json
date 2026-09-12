@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.lightstalker89.app"
+      "bundleIdentifier": "com.meecode.kickuno"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.lightstalker89.app"
+      "package": "com.meecode.kickuno"
     },
     "web": {
       "output": "static",

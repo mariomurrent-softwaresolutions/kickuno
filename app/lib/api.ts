@@ -152,12 +152,35 @@ export function me() {
   return request<{ user: ApiUser | null }>('/api/users/me');
 }
 
+/**
+ * `POST /api/users/change-password` (Users.ts) — not a plain
+ * `PATCH /api/users/:id`, since that would accept a new password with no
+ * proof the caller knows the current one. Throws `ApiError` with a
+ * German message (e.g. wrong current password, new password too short)
+ * that's safe to show as-is.
+ */
+export function changePassword(currentPassword: string, newPassword: string) {
+  return request<{ message: string }>('/api/users/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  });
+}
+
 // --- Groups / memberships ---
 
-export function myMemberships() {
-  // Memberships.access.read already scopes this to "my rows (+ rows I admin)"
-  // — implementation-plan.md §3.4 — so no explicit `where` is needed here.
-  return request<{ docs: ApiMembership[] }>('/api/memberships?depth=1&limit=10');
+export function myMemberships(userId: string) {
+  // Memberships.access.read scopes reads to "my own rows, plus every row in
+  // a group I admin/organize" (implementation-plan.md §3.4) — deliberately
+  // broader than "just mine", for the Gruppe member-list screen. That means
+  // an admin/organizer calling this without a `where` filter gets back
+  // *everyone's* membership in their group(s), not just their own, and
+  // `docs[0]` can end up being some other member's row instead of theirs
+  // (found live: an admin ended up with `canEdit: false` because a
+  // teammate's `role: 'player'` row came back first). Filtering explicitly
+  // by `user` here is what actually makes this "my memberships".
+  return request<{ docs: ApiMembership[] }>(
+    `/api/memberships?where[user][equals]=${encodeURIComponent(userId)}&depth=1&limit=10`
+  );
 }
 
 export function joinGroup(code: string) {
@@ -315,10 +338,21 @@ export type ApiPlayerSummary = {
   strength?: number;
 };
 
+/** `rsvpStatus`: `'no'` = explicitly declined, `'none'` = never responded. */
+export type ApiNotAttendingPlayer = ApiPlayerSummary & { rsvpStatus: 'no' | 'none' };
+
 export type ApiLineup = {
   pool: ApiPlayerSummary[];
   red: ApiPlayerSummary[];
   green: ApiPlayerSummary[];
+  /**
+   * Every other real group member — always empty when `features.rsvp` is
+   * off (§4.5, not in the original plan). Assigning one of these via
+   * `assignLineupPlayer` marks them attending server-side as a side
+   * effect (see `PATCH /:id/lineup` on `Fixtures.ts`) — no separate RSVP
+   * call needed from here.
+   */
+  notAttending: ApiNotAttendingPlayer[];
 };
 
 // The write shape (POST /result body) always sends plain ids; the read
