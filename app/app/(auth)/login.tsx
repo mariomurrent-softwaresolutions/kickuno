@@ -1,32 +1,58 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth-context';
+import { ApiError } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
+type Mode = 'login' | 'register';
+
 /**
- * Combined "create account / log in" + "join a group" screen — visually the
- * prototype's single Login screen, extended with real email/password auth
- * per documentation/implementation-plan.md §3.5.
- *
- * TODO(cms): wire `handleSubmit` to POST /api/users/login (or /api/users on
- * first run) then POST /api/groups/join { code }. Stubbed to just flip
- * local auth state until the Payload backend exists.
+ * Login / create-account screen — visually the prototype's single Login
+ * screen, wired to real email/password auth (implementation-plan.md §3.5).
+ * The invite-code / "create a group" step happens on the next screen
+ * (`(auth)/join.tsx`) once the account exists — see the (auth) layout guard.
  */
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const insets = useSafeAreaInsets();
-  const [code, setCode] = useState('HALLE-OST');
+  const [mode, setMode] = useState<Mode>('login');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSubmit() {
-    login();
-    router.replace('/(app)/(tabs)');
+  async function handleSubmit() {
+    if (submitting) return;
+    setError(null);
+
+    if (!email.trim() || !password) {
+      setError('E-Mail und Passwort werden benötigt.');
+      return;
+    }
+    if (mode === 'register' && !name.trim()) {
+      setError('Name wird benötigt.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (mode === 'register') {
+        await register(name.trim(), email.trim(), password);
+      } else {
+        await login(email.trim(), password);
+      }
+      // Navigation happens automatically: the (auth) layout redirects to
+      // /join or /(app)/(tabs) once useAuth()'s status updates.
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -77,30 +103,75 @@ export default function LoginScreen() {
           </VStack>
 
           <VStack className="gap-3">
-            <LabeledInput label="Gruppen-Code" value={code} onChangeText={setCode} placeholder="z.B. HALLE-OST" autoCapitalize="characters" />
+            <ModeToggle mode={mode} onChange={(m) => { setMode(m); setError(null); }} />
+
+            {mode === 'register' && (
+              <LabeledInput label="Name" value={name} onChangeText={setName} placeholder="Vor- und Nachname" />
+            )}
             <LabeledInput label="E-Mail" value={email} onChangeText={setEmail} placeholder="du@example.com" autoCapitalize="none" keyboardType="email-address" />
             <LabeledInput label="Passwort" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry />
 
-            <Pressable onPress={handleSubmit} className="mt-1 h-14 overflow-hidden rounded-[15px] active:opacity-90">
+            {error && (
+              <Text className="font-body-semibold text-red" style={{ fontSize: 13 }}>
+                {error}
+              </Text>
+            )}
+
+            <Pressable
+              onPress={handleSubmit}
+              disabled={submitting}
+              className="mt-1 h-14 overflow-hidden rounded-[15px] active:opacity-90"
+              style={{ opacity: submitting ? 0.7 : 1 }}
+            >
               <LinearGradient
                 colors={[colors.red, colors.green]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text className="font-body-bold text-white" style={{ fontSize: 17 }}>
-                  Einsteigen
-                </Text>
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="font-body-bold text-white" style={{ fontSize: 17 }}>
+                    {mode === 'register' ? 'Konto erstellen' : 'Einsteigen'}
+                  </Text>
+                )}
               </LinearGradient>
             </Pressable>
 
-            <Text className="text-center font-body text-dim" style={{ fontSize: 12.5, marginTop: 2 }}>
-              Noch kein Konto? Code vom Organisator bekommen und registrieren.
-            </Text>
+            <Pressable onPress={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(null); }}>
+              <Text className="text-center font-body text-dim" style={{ fontSize: 12.5, marginTop: 2 }}>
+                {mode === 'register'
+                  ? 'Schon ein Konto? Einloggen.'
+                  : 'Noch kein Konto? Registrieren — den Gruppen-Code brauchst du gleich danach.'}
+              </Text>
+            </Pressable>
           </VStack>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
+  );
+}
+
+function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+  return (
+    <HStack className="gap-1.5 self-start rounded-full border border-hairline bg-bg-card p-1">
+      {(['login', 'register'] as const).map((m) => (
+        <Pressable
+          key={m}
+          onPress={() => onChange(m)}
+          className="rounded-full px-4"
+          style={{ height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? colors.bgSunken : 'transparent' }}
+        >
+          <Text
+            className={mode === m ? 'font-body-semibold text-ink' : 'font-body text-dim'}
+            style={{ fontSize: 12.5 }}
+          >
+            {m === 'login' ? 'Einloggen' : 'Registrieren'}
+          </Text>
+        </Pressable>
+      ))}
+    </HStack>
   );
 }
 
@@ -109,7 +180,7 @@ function LabeledInput(props: {
   value: string;
   onChangeText: (v: string) => void;
   placeholder: string;
-  autoCapitalize?: 'none' | 'characters';
+  autoCapitalize?: 'none' | 'characters' | 'words';
   keyboardType?: 'default' | 'email-address';
   secureTextEntry?: boolean;
 }) {

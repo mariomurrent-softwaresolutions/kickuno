@@ -15,7 +15,7 @@
  * screen already imports from "@/components/ui/primitives" and won't need
  * to change later.
  */
-import { forwardRef } from 'react';
+import {forwardRef} from 'react';
 import {
   View,
   Text as RNText,
@@ -25,28 +25,28 @@ import {
   type PressableProps,
 } from 'react-native';
 
-import { cn } from '@/lib/cn';
+import {cn} from '@/lib/cn';
 
 export const Box = View;
 
 export const VStack = forwardRef<View, ViewProps & { className?: string }>(
-  ({ className, ...props }, ref) => <View ref={ref} className={cn('flex-col', className)} {...props} />
+  ({className, ...props}, ref) => <View ref={ref} className={cn('flex-col', className)} {...props} />
 );
 VStack.displayName = 'VStack';
 
 export const HStack = forwardRef<View, ViewProps & { className?: string }>(
-  ({ className, ...props }, ref) => <View ref={ref} className={cn('flex-row', className)} {...props} />
+  ({className, ...props}, ref) => <View ref={ref} className={cn('flex-row', className)} {...props} />
 );
 HStack.displayName = 'HStack';
 
 export const Text = forwardRef<RNText, TextProps & { className?: string }>(
-  ({ className, ...props }, ref) => (
+  ({className, ...props}, ref) => (
     <RNText ref={ref} className={cn('font-body text-ink', className)} {...props} />
   )
 );
 Text.displayName = 'Text';
 
 export const Pressable = forwardRef<View, PressableProps & { className?: string }>(
-  ({ className, ...props }, ref) => <RNPressable ref={ref} className={className} {...props} />
+  ({className, ...props}, ref) => <RNPressable ref={ref} className={className} {...props} />
 );
 Pressable.displayName = 'Pressable';

@@ -52,6 +52,15 @@ export function GruppeIcon({ color, size = 21 }: IconProps) {
   );
 }
 
+export function ProfilIcon({ color, size = 21 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={8} r={3.6} stroke={color} strokeWidth={1.7} />
+      <Path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5" stroke={color} strokeWidth={1.7} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function ChevronBackIcon({ color, size = 16 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -62,6 +71,28 @@ export function ChevronBackIcon({ color, size = 16 }: IconProps) {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+export function ChevronForwardIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <Path
+        d="M6 3l5 5-5 5"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+export function PlusIcon({ color, size = 16 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <Path d="M8 2v12M2 8h12" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
     </Svg>
   );
 }

@@ -1,10 +1,10 @@
 import { Tabs } from 'expo-router';
 
 import { HStack, Pressable, Text } from '@/components/ui/primitives';
-import { GruppeIcon, StartIcon, StatistikIcon, TermineIcon } from '@/components/ui/icons';
+import { GruppeIcon, ProfilIcon, StartIcon, StatistikIcon, TermineIcon } from '@/components/ui/icons';
 import { colors } from '@/theme/tokens';
 
-const ICONS = [StartIcon, TermineIcon, StatistikIcon, GruppeIcon];
+const ICONS = [StartIcon, TermineIcon, StatistikIcon, GruppeIcon, ProfilIcon];
 
 export default function TabsLayout() {
   return (
@@ -13,6 +13,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="termine" options={{ title: 'Termine' }} />
       <Tabs.Screen name="statistik" options={{ title: 'Statistik' }} />
       <Tabs.Screen name="gruppe" options={{ title: 'Gruppe' }} />
+      <Tabs.Screen name="profil" options={{ title: 'Profil' }} />
     </Tabs>
   );
 }
@@ -20,6 +21,11 @@ export default function TabsLayout() {
 /**
  * Custom tab bar matching the prototype's bar exactly (icons + active/inactive
  * ink vs. dim coloring) — Expo Router's default bar doesn't match this look.
+ *
+ * A 5th tab ("Profil") was added on top of the prototype's original 4
+ * (Start/Termine/Statistik/Gruppe, §4.3) — a dedicated place for the
+ * signed-in user's own account + logout, instead of the "Abmelden" link
+ * that used to sit on the Start screen as a dev convenience.
  *
  * Typed loosely (BottomTabBarProps isn't resolvable as a standalone import
  * here — it comes in transitively through expo-router/@react-navigation) —
