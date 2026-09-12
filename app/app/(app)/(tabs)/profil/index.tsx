@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { ChevronForwardIcon } from '@/components/ui/icons';
 import { useAuth } from '@/lib/auth-context';
+import * as api from '@/lib/api';
+import { ApiError } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
 const ROLE_LABELS: Record<string, string> = { admin: 'Admin', organizer: 'Organisator', player: 'Spieler' };
@@ -85,6 +87,8 @@ export default function ProfilScreen() {
           </Pressable>
         ) : null}
 
+        <ChangePasswordCard />
+
         <Pressable
           onPress={handleLogout}
           disabled={loggingOut}
@@ -97,5 +101,139 @@ export default function ProfilScreen() {
         </Pressable>
       </VStack>
     </ScrollView>
+  );
+}
+
+/**
+ * Inline "Passwort ändern" — collapsed to a single row by default, like the
+ * rest of Profil; expands to a 3-field form on tap. Not a plan-called-out
+ * feature (implementation-plan.md's auth section only ever specified
+ * login/register), added on request: every account so far can only ever
+ * get a password via `POST /api/users` at signup, with no way to change it
+ * afterwards short of editing Mongo directly.
+ *
+ * Deliberately its own endpoint rather than a plain
+ * `PATCH /api/users/:id { password }` — see `Users.ts`'s `/change-password`
+ * endpoint and this file's `api.changePassword` for why (proof of the
+ * current password, not just a valid session token).
+ */
+function ChangePasswordCard() {
+  const [expanded, setExpanded] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  function reset() {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError(null);
+  }
+
+  function toggle() {
+    setExpanded((prev) => !prev);
+    reset();
+    setSuccess(false);
+  }
+
+  async function handleSave() {
+    if (submitting) return;
+    setError(null);
+    setSuccess(false);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Alle Felder werden benötigt.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError('Neues Passwort muss mindestens 8 Zeichen haben.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Neue Passwörter stimmen nicht überein.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <VStack className="gap-3 rounded-[18px] border border-hairline bg-bg-card p-4">
+      <Pressable onPress={toggle} className="flex-row items-center justify-between active:opacity-80">
+        <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
+          Passwort ändern
+        </Text>
+        <ChevronForwardIcon color={colors.dim} />
+      </Pressable>
+
+      {expanded ? (
+        <VStack className="gap-3">
+          <PasswordField label="Aktuelles Passwort" value={currentPassword} onChangeText={setCurrentPassword} />
+          <PasswordField label="Neues Passwort" value={newPassword} onChangeText={setNewPassword} />
+          <PasswordField label="Neues Passwort wiederholen" value={confirmPassword} onChangeText={setConfirmPassword} />
+
+          {error ? (
+            <Text className="font-body-semibold text-red" style={{ fontSize: 12.5 }}>
+              {error}
+            </Text>
+          ) : null}
+          {success ? (
+            <Text className="font-body-semibold text-green" style={{ fontSize: 12.5 }}>
+              Passwort geändert.
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={handleSave}
+            disabled={submitting}
+            className="items-center rounded-[12px] py-3 active:opacity-85"
+            style={{ backgroundColor: colors.green, opacity: submitting ? 0.7 : 1 }}
+          >
+            <Text className="font-body-bold text-white" style={{ fontSize: 13.5 }}>
+              {submitting ? 'Speichert…' : 'Speichern'}
+            </Text>
+          </Pressable>
+        </VStack>
+      ) : null}
+    </VStack>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChangeText,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (v: string) => void;
+}) {
+  return (
+    <VStack className="gap-1.5">
+      <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        secureTextEntry
+        placeholder="••••••••"
+        placeholderTextColor={colors.dim}
+        className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
+        style={{ height: 44, fontSize: 14.5 }}
+      />
+    </VStack>
   );
 }

@@ -35,8 +35,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [group, setGroup] = useState<ApiGroup | null>(null);
   const [membership, setMembership] = useState<ApiMembership | null>(null);
 
-  async function loadMembership() {
-    const { docs } = await api.myMemberships();
+  async function loadMembership(userId: string) {
+    const { docs } = await api.myMemberships(userId);
     const first = docs[0];
     if (!first) {
       setGroup(null);
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
         setUser(restoredUser);
-        await loadMembership();
+        await loadMembership(restoredUser.id);
       } catch {
         await api.setToken(null);
         setStatus('signedOut');
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const { user: loggedInUser, token } = await api.login(email, password);
     await api.setToken(token);
     setUser(loggedInUser);
-    await loadMembership();
+    await loadMembership(loggedInUser.id);
   }
 
   async function register(name: string, email: string, password: string) {
@@ -97,11 +97,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     await api.createGroup(name);
     // Groups.afterChange already created the admin membership server-side
     // (Groups.ts) — just reload it rather than re-deriving it here.
-    await loadMembership();
+    if (user) await loadMembership(user.id);
   }
 
   async function refreshGroup() {
-    await loadMembership();
+    if (user) await loadMembership(user.id);
   }
 
   async function logout() {

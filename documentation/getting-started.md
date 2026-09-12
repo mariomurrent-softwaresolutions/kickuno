@@ -515,12 +515,30 @@ mobile app does) is completely unaffected.
   `PATCH` only applies to documents inside a regular collection (this
   tripped up the first live test of this feature — see below).
 - **`Users.ts`** gained `access.admin`: returns `false` immediately unless
-  `req.user.email === ADMIN_PANEL_ALLOWED_EMAIL`, then defers to
+  the requesting account is *eligible* (see below), then defers to
   `isAdminPanelLoginEnabled()`. `access.admin` is the Payload hook that
   specifically gates the `/admin` UI — it has no effect on `read`/
   `create`/`update`/`delete` access or the `auth`-provided
   `POST /api/users/login`/`POST /api/users` endpoints, which is exactly
   why app logins needed no changes here.
+- **`Users.ts`** also gained a new field, `adminPanelAccess` (checkbox,
+  defaults to `false`) — per-user admin-panel eligibility, so
+  `ADMIN_PANEL_ALLOWED_EMAIL` doesn't have to stay the *only* account
+  that can ever reach `/admin`. Eligibility is now
+  `email === ADMIN_PANEL_ALLOWED_EMAIL || adminPanelAccess === true`.
+  That hardcoded email is kept as a permanent, unremovable fallback
+  precisely *because* this field exists — nothing about toggling other
+  accounts' checkboxes (even accidentally clearing everyone else's) can
+  ever lock that one account out. The field itself has its own access
+  control, independent of `access.admin`: `create: () => false` (so a
+  signup payload — `POST /api/users` is open to anyone, §3.4 — can never
+  set it), and `read`/`update` both restricted to a requester who is
+  *already* eligible (the fallback account or a previously-granted
+  `adminPanelAccess` account). That means granting or revoking someone
+  else's admin-panel access has to happen from inside `/admin` itself
+  (or an authenticated API call from an already-eligible account) —
+  never self-service, and never by an ineligible account editing their
+  own document.
 
 Nothing seeds the `admin-access` global's document — Payload returns the
 field's `defaultValue` (`false`) until the allowed account's first
@@ -532,12 +550,250 @@ Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
 clean. Not runnable end-to-end from this bridge itself (no live
 Mongo/Payload instance reachable from it — see the rough edges below),
 but verified live against your actual running `cms` dev server via the
-desktop app's browser pane: confirmed `/admin` refused
-`mario@murrent.at` while `enabled` was `false`, flipped the global on
-with the authenticated `POST` above, and confirmed `/admin` then loaded
-the dashboard for that account. (The first attempt at this used `PATCH`
+desktop app's browser pane at every step: confirmed `/admin` refused
+`mario@murrent.at` while `enabled` was `false`; flipped the global on
+with the authenticated `POST` above and confirmed `/admin` then loaded
+the dashboard for that account (the first attempt at this used `PATCH`
 instead of `POST` and got a genuinely confusing `404 Route not found` —
-worth remembering if this ever needs re-verifying.)
+worth remembering if this ever needs re-verifying); then, for the
+`adminPanelAccess` field, granted it to one other real account
+(`gerhard@hallenkick.at`) via `PATCH /api/users/:id`, confirmed it stuck
+(`GET` echoed `adminPanelAccess: true` back), and reverted it to `false`
+afterward so no seed data was left changed by this test. Also worth
+noting for anyone re-reading this later: the Mongo `_id` originally
+hardcoded here before the switch to email-based checking
+(`6aa4e98508d088286e6e28f4`) does exist in this database — it just
+belongs to an unrelated seed account, `mario@hallenkick.at`, not the
+real `mario@murrent.at` login. A coincidence of similar-looking seed
+data, not a sign the id-based approach would've worked in general (the
+underlying fragility — ids not surviving a reseed/new environment —
+still stands, hence the switch to email).
+
+## Since phase 8 (partial): change password in Profil (not in the original plan)
+
+Added on request — every account previously could only ever get a
+password via `POST /api/users` at signup, with no way to change it
+afterwards short of editing Mongo directly (or, for the one admin-panel
+account, resetting it from `/admin`).
+
+**`cms/`**:
+
+- **`Users.ts`** gained a collection endpoint, `POST /api/users/
+  change-password`, body `{ currentPassword, newPassword }`. It is
+  deliberately *not* a plain `PATCH /api/users/:id { password }` —
+  that would accept a new password on nothing but a valid session
+  token, with no proof the caller actually knows the current one (a
+  leaked/stolen token would then be enough to lock the real owner out
+  completely). Instead it first calls `payload.login()` with the
+  caller's own email and the submitted `currentPassword` —
+  `overrideAccess: true`, same as the admin-panel-lock code's global
+  read above — which is the exact same code path
+  `POST /api/users/login` itself uses, so a wrong current password
+  fails with a plain `401` and (for free) shares that operation's
+  login-attempt tracking/lockout policy rather than reimplementing
+  password comparison here. Only once that succeeds does it
+  `payload.update()` the caller's own document with the new password.
+  Requires `newPassword` to be at least 8 characters (`400` otherwise);
+  entirely additive — `POST /api/users/login` itself is untouched.
+- **`Users.ts`** also gained `access.update` — previously unset, which
+  does *not* default to "allow everyone" the way it might look at a
+  glance: Payload's actual default for any access key you don't specify
+  is `defaultAccess = ({ req: { user } }) => Boolean(user)`, i.e. "any
+  signed-in user, full stop" — so any account could already `PATCH
+  /api/users/:id` on *any other* account, not just their own (a real
+  gap, most concretely for `password` — the new endpoint above would
+  have been pointless if a stolen token could just bypass it with a raw
+  PATCH). Now: a user may only update their own document, *unless*
+  they're admin-panel-eligible (`ADMIN_PANEL_ALLOWED_EMAIL` or
+  `adminPanelAccess === true`, see above), in which case they keep full
+  update access to every user document — needed so that an eligible
+  account can still flip *another* account's `adminPanelAccess` field
+  (already live-tested when that field was added), and consistent with
+  such an account already being able to edit any user from `/admin`
+  itself once the global CMS-access switch is on.
+- **`Users.ts`** also gained `access.create: () => true` — a genuine
+  pre-existing bug, found (not introduced) while writing a from-scratch
+  registration test for the above: `create` was never once set, on any
+  commit back to the very first one, so the same `defaultAccess`
+  behavior meant **anonymous signup — `POST /api/users`, exactly what
+  login.tsx's "Registrieren" mode calls — has been rejected with `403`
+  this entire time.** Nothing about registration itself changed in this
+  round; this just makes it match what the app has always assumed.
+
+**`app/`**:
+
+- **`lib/api.ts`** gained `changePassword(currentPassword, newPassword)`,
+  calling the endpoint above.
+- **Profil tab** gained a collapsible "Passwort ändern" card (above
+  "Abmelden") with three password fields (current, new, repeat) —
+  client-side mirrors the server's 8-character minimum and repeat-match
+  check before submitting, then shows the server's German error message
+  as-is (wrong current password, too-short new password, etc.) or a
+  green success line.
+
+Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
+clean. Verified live against the actual running `cms` dev server via the
+browser pane, entirely with disposable throwaway accounts registered and
+deleted for this test — never with any real user's password: registered
+a test account, changed its password with a deliberately wrong current
+password (`401`, correct message), with a too-short new password
+(`400`), then with the correct current password (`200`); confirmed the
+old password then fails login and the new one succeeds; confirmed the
+endpoint itself refuses an unauthenticated call (`401`); and separately,
+with two more disposable test accounts, confirmed the `access.update`
+tightening actually blocks one account from `PATCH`ing another's
+document (`403`) while a self-`PATCH` still works (`200`). All test
+accounts were deleted afterward; `mario@murrent.at`'s own logged-in
+browser session was left untouched throughout (every test-account
+request used an explicit bearer token with `credentials: 'omit'`,
+never the browser's own session cookie).
+
+## Since phase 8 (partial): memberships creatable from the CMS (not in the original plan)
+
+`Memberships.ts`'s `access.create` used to be an unconditional
+`() => false` — on purpose (see the comment that was there): the app
+itself never needs to create one directly (`/groups/join` and the
+auto-admin-on-create hook both do it server-side with
+`overrideAccess: true`), and opening `create` to any signed-in account
+would let a player grant themselves `admin` on any group, or join one
+without an invite code at all.
+
+Changed to allow exactly the same accounts that can already reach
+`/admin` at all — `ADMIN_PANEL_ALLOWED_EMAIL` or `adminPanelAccess ===
+true`, the identical check `Users.ts`'s `access.admin` already uses —
+so a membership can now be added by hand from the CMS (e.g. fixing up
+imported/seed data, or adding someone who never went through an invite
+code), while a regular app account still gets `403` calling
+`POST /api/memberships` directly, exactly as before.
+
+`cd cms && npx tsc --noEmit` is clean. Verified live against the actual
+running dev server via the browser pane: as `mario@murrent.at`
+(admin-panel-eligible), created a disposable group and a disposable
+test user, then created a membership joining them directly via
+`POST /api/memberships` — `201`; separately, logged in as that same
+disposable (non-eligible) test user and confirmed *they* still get
+`403` trying to create a membership themselves (self-granting `admin`
+in that group). Everything created for this test — the membership, the
+disposable group, and the disposable user — was deleted again
+afterward; also caught and deleted one leftover membership row that
+Groups.ts's auto-admin-on-create hook had created for `mario@murrent.at`
+himself in that disposable group (deleting a group doesn't cascade-delete
+its memberships — worth remembering if this is ever tested again).
+`mario@murrent.at`'s real group/membership (`HEILIGER-DIENSTAG`) was
+confirmed untouched throughout.
+
+## Since phase 8 (partial): "Nicht dabei" on Termin-Detail (not in the original plan)
+
+Reported as "I can't select the team anymore for a player" — not a
+regression, but `eligiblePlayerIds()`'s by-design pool restriction
+(§3.8: only rsvp-confirmed members when `features.rsvp` is on) finally
+biting once real RSVP responses started accumulating: a player who said
+no, or just hasn't answered yet, was never in "Unverteilt" at all, so
+there was no control anywhere to give them a team. Requested fix: surface
+those players too, and let assigning one of them from that list count as
+confirming their attendance, in one action.
+
+**`cms/`**:
+
+- **`lib/lineup.ts`** gained `allGroupMemberIds()` (every real member of a
+  group — `eligiblePlayerIds()`'s non-rsvp branch now just calls this
+  instead of duplicating the query) and `buildLineupSummaries()`, which
+  the `GET`/`PATCH .../lineup` and `.../auto-balance` endpoints all now
+  share instead of each computing `pool`/summaries by hand. It returns a
+  4th bucket, `notAttending`: every group member not currently eligible
+  and not already assigned, each tagged `rsvpStatus: 'no'` (explicitly
+  declined) or `'none'` (never responded) — worked out from which of
+  them actually have an rsvp row for this fixture. Always empty when
+  `features.rsvp` is off, since then `eligiblePlayerIds()` already
+  returns every member and nobody's left over.
+- **`Fixtures.ts`**'s `PATCH .../lineup` handler: assigning a player who
+  isn't currently eligible (i.e. someone from the app's new "Nicht
+  dabei" list) is no longer a flat `400` — it's now allowed *specifically
+  when actually assigning them to a team* (`team: 'red' | 'green'`, never
+  `team: null` — unassigning only ever applies to someone already
+  assigned, who was already eligible to begin with), and, as a side
+  effect, upserts their `rsvps` row to `status: 'yes'` first. Still `400`
+  if the id isn't even a member of the fixture's group at all — this
+  isn't a way to assign an arbitrary user id, just to pull in someone who
+  hasn't confirmed. Still admin/organizer-only, unchanged (§3.4) — a
+  regular player calling this still gets `403`, whether the target is
+  already eligible or not.
+- **`.../auto-balance`** now returns `notAttending` too (via the same
+  `buildLineupSummaries()`) — it used to hardcode `pool: []` and never
+  return this field at all, which meant the app's cache lost the "Nicht
+  dabei" list after every auto-balance call. Auto-balance's own selection
+  logic is unchanged — it still only ever splits the *eligible* pool, so
+  someone in "Nicht dabei" stays there until manually assigned.
+
+**`app/`**:
+
+- **`lib/api.ts`**'s `ApiLineup` gained `notAttending:
+  (ApiPlayerSummary & { rsvpStatus: 'no' | 'none' })[]`.
+- **Termin-Detail** gained a "Nicht dabei" section (admin/organizer-only,
+  hidden entirely when empty) below "Unverteilt", each row showing the
+  player's name, "Abgesagt"/"Keine Antwort", and the same Rot/Grün
+  buttons as a pool row — calling the exact same `assignLineupPlayer`
+  mutation, so a tap there needs no separate "mark attending" step; the
+  server does that as part of the one assign call. The optimistic
+  cache-update logic (`onMutate`/`withoutPlayer`) now also searches/prunes
+  `notAttending`, so a chip still animates straight from that list into
+  Rot/Grün instead of waiting on a refetch.
+
+Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
+clean. Verified live against the actual running dev server via the
+browser pane, entirely with disposable fixtures (a throwaway group,
+fixture, and three test accounts — one confirmed, one silent, one
+declined): confirmed the silent and declined accounts both showed up in
+`notAttending` with the right status (plus, as a nice sanity check,
+`mario@murrent.at` himself showed up there too — he'd joined that
+disposable group as its auto-admin but never RSVP'd, exactly as the
+logic should treat any unconfirmed member); confirmed trying to
+*unassign* a not-yet-eligible player is still rejected (`400`); assigned
+the silent account straight to green and confirmed both that it now
+shows up in `green` (and disappears from `notAttending`) *and*,
+independently, that the account's own `GET .../summary` call now reports
+`myStatus: 'yes'` — proof the RSVP itself actually flipped, not just the
+lineup response; confirmed a non-admin member still gets `403` trying
+the same assign; and confirmed `auto-balance`'s response now actually
+carries a `notAttending` key. Every disposable fixture/group/membership/
+user was deleted afterward — except the one `lineups` document created
+along the way, which turned out to be impossible to clean up through any
+API call: `Lineups.ts`'s access control is `() => false` across the
+board, on purpose (every legitimate read/write already goes through
+`Fixtures.ts`'s own endpoints), so there's no way to delete one directly
+even from `/admin`. Harmless — nothing ever looks up a lineup except by
+an existing fixture id, so an orphaned row pointing at a deleted fixture
+is simply inert forever, same category as the "deleting a group doesn't
+cascade-delete its memberships" note above. `mario@murrent.at`'s real
+group/membership (`HEILIGER-DIENSTAG`) was confirmed untouched
+throughout.
+
+### Follow-up fix: "Nicht dabei" broke assigning *accepted* players too
+
+Reported right after the above shipped: "I cannot assign the accepted
+players anymore to a team — seems like the buttons are gone." The
+backend was never actually broken — a fresh live check (same disposable-
+fixture approach as above) confirmed `PATCH .../lineup` still assigns an
+already-accepted pool player correctly. The bug was client-side: several
+spots in the Termin-Detail screen (`withoutPlayer`, the optimistic
+`onMutate` player search, the "Nicht dabei" section's render guard) read
+`lineup.notAttending` without allowing for it to be missing. A lineup
+object from *before* this field existed — a stale cached response still
+sitting in the query cache the moment the screen re-rendered after the
+backend/app picked up the change — would make `.length`/`.filter`/`.map`
+throw on `undefined`, and since that throw happened inside
+`assignMutation`'s `onMutate` (which runs before the actual `PATCH`
+request), it silently killed *every* assign attempt, not just ones
+involving "Nicht dabei" — pool players included. Fixed by defaulting to
+`[]` everywhere `notAttending` is read on a lineup value that might be
+stale, instead of assuming the field is always present.
+
+Also declined, per explicit "this should not work": adding a member to a
+group directly from the app itself (skipping the invite-code flow, by
+looking up an existing account's email). Membership creation stays
+CMS-only, as built above — nothing changed there.
+
+`cd app && npx tsc --noEmit` is clean.
 
 ## Prerequisites
 

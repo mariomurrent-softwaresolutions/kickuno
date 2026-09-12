@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload';
 
 import { membershipGroupIds } from '../access/helpers';
 import { getOrCreateCurrentSeason } from '../lib/season';
-import { eligiblePlayerIds, membershipStrengthByUser, seasonGoalsByUser, playerSummaries } from '../lib/lineup';
+import { eligiblePlayerIds, allGroupMemberIds, membershipStrengthByUser, seasonGoalsByUser, buildLineupSummaries } from '../lib/lineup';
 import { recomputeStatsForPlayers } from '../lib/stats';
 import { polyIds, polyRef, polyRefs, polyValue } from '../lib/polymorphic';
 
@@ -315,18 +315,12 @@ export const Fixtures: CollectionConfig = {
         const lineup = existing.docs[0];
         const redIds = lineup ? polyIds(lineup.redPlayers) : [];
         const greenIds = lineup ? polyIds(lineup.greenPlayers) : [];
-        const assigned = new Set([...redIds, ...greenIds].map(String));
-        const poolIds = eligibleIds.filter((id) => !assigned.has(String(id)));
 
         const strengthMap = strengthEnabled ? await membershipStrengthByUser(req.payload, groupId, eligibleIds) : null;
 
-        const [pool, red, green] = await Promise.all([
-          playerSummaries(req.payload, poolIds, strengthMap),
-          playerSummaries(req.payload, redIds, strengthMap),
-          playerSummaries(req.payload, greenIds, strengthMap),
-        ]);
+        const result = await buildLineupSummaries(req.payload, groupId, fixtureId, eligibleIds, redIds, greenIds, strengthMap);
 
-        return Response.json({ pool, red, green }, { status: 200 });
+        return Response.json(result, { status: 200 });
       },
     },
     {
@@ -376,8 +370,49 @@ export const Fixtures: CollectionConfig = {
 
         const rsvpEnabled = Boolean(group?.features?.rsvp);
         const eligibleIds = await eligiblePlayerIds(req.payload, groupId, fixtureId, rsvpEnabled);
+        let finalEligibleIds = eligibleIds;
+
         if (!eligibleIds.map(String).includes(String(playerId))) {
-          return Response.json({ error: 'Player is not eligible for this fixture' }, { status: 400 });
+          // Not currently "confirmed" (only reachable when `features.rsvp`
+          // is on — with it off, `eligiblePlayerIds()` already returns
+          // every member). This is the app's "Nicht dabei" list (§4.5):
+          // assigning someone from there always means they're attending
+          // now, so mark their RSVP `yes` as a side effect before
+          // proceeding — unassigning (`team === null`) can never land here
+          // in the first place, since only an already-assigned (and so
+          // already-eligible) player can be unassigned. Still requires
+          // them to actually belong to this fixture's group at all — this
+          // isn't a way to assign an arbitrary user id.
+          const memberIds = await allGroupMemberIds(req.payload, groupId);
+          if (!memberIds.map(String).includes(String(playerId))) {
+            return Response.json({ error: 'Player is not a member of this group' }, { status: 400 });
+          }
+          if (team === null) {
+            return Response.json({ error: 'Player is not eligible for this fixture' }, { status: 400 });
+          }
+
+          const existingRsvp = await req.payload.find({
+            collection: 'rsvps',
+            where: { fixture: { equals: fixtureId }, user: { equals: playerId } },
+            limit: 1,
+            overrideAccess: true,
+          });
+          const respondedAt = new Date().toISOString();
+          if (existingRsvp.docs[0]) {
+            await req.payload.update({
+              collection: 'rsvps',
+              id: existingRsvp.docs[0].id,
+              data: { status: 'yes', respondedAt },
+              overrideAccess: true,
+            });
+          } else {
+            await req.payload.create({
+              collection: 'rsvps',
+              data: { fixture: fixtureId, user: playerId, status: 'yes', respondedAt },
+              overrideAccess: true,
+            });
+          }
+          finalEligibleIds = [...eligibleIds, playerId];
         }
 
         const existing = await req.payload.find({
@@ -392,8 +427,9 @@ export const Fixtures: CollectionConfig = {
         const green = (lineup ? polyIds(lineup.greenPlayers) : []).filter((id) => String(id) !== String(playerId));
         if (team === 'red') red.push(playerId);
         if (team === 'green') green.push(playerId);
-        // Every id here comes from `eligiblePlayerIds` — always a real
-        // group member — so 'users' is the right kind for every write.
+        // Every id here comes from `eligiblePlayerIds`/the membership check
+        // above — always a real group member — so 'users' is the right
+        // kind for every write.
         const redPlayers = red.map((id) => polyRef('users', id));
         const greenPlayers = green.map((id) => polyRef('users', id));
 
@@ -412,17 +448,12 @@ export const Fixtures: CollectionConfig = {
 
         const savedRed = polyIds(saved.redPlayers);
         const savedGreen = polyIds(saved.greenPlayers);
-        const assigned = new Set([...savedRed, ...savedGreen].map(String));
-        const poolIds = eligibleIds.filter((id) => !assigned.has(String(id)));
         const strengthEnabled = Boolean(group?.features?.strength);
-        const strengthMap = strengthEnabled ? await membershipStrengthByUser(req.payload, groupId, eligibleIds) : null;
-        const [pool, redSummaries, greenSummaries] = await Promise.all([
-          playerSummaries(req.payload, poolIds, strengthMap),
-          playerSummaries(req.payload, savedRed, strengthMap),
-          playerSummaries(req.payload, savedGreen, strengthMap),
-        ]);
+        const strengthMap = strengthEnabled ? await membershipStrengthByUser(req.payload, groupId, finalEligibleIds) : null;
 
-        return Response.json({ pool, red: redSummaries, green: greenSummaries }, { status: 200 });
+        const result = await buildLineupSummaries(req.payload, groupId, fixtureId, finalEligibleIds, savedRed, savedGreen, strengthMap);
+
+        return Response.json(result, { status: 200 });
       },
     },
     {
@@ -513,13 +544,15 @@ export const Fixtures: CollectionConfig = {
           });
         }
 
+        // `pool`/`notAttending` fall out of `buildLineupSummaries` on their
+        // own (auto-balance splits every eligible id between red/green, so
+        // pool naturally computes empty) — this used to hardcode
+        // `pool: []` and never returned `notAttending` at all, which left
+        // the app's cache missing that list after an auto-balance call.
         const strengthMapForSummary = strengthEnabled ? strengthMap : null;
-        const [redSummaries, greenSummaries] = await Promise.all([
-          playerSummaries(req.payload, red, strengthMapForSummary),
-          playerSummaries(req.payload, green, strengthMapForSummary),
-        ]);
+        const result = await buildLineupSummaries(req.payload, groupId, fixtureId, eligibleIds, red, green, strengthMapForSummary);
 
-        return Response.json({ pool: [], red: redSummaries, green: greenSummaries }, { status: 200 });
+        return Response.json(result, { status: 200 });
       },
     },
     {

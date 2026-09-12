@@ -58,6 +58,7 @@ export default function TerminDetailScreen() {
       pool: l.pool.filter((p) => p.id !== playerId),
       red: l.red.filter((p) => p.id !== playerId),
       green: l.green.filter((p) => p.id !== playerId),
+      notAttending: (l.notAttending ?? []).filter((p) => p.id !== playerId),
     };
   }
 
@@ -75,7 +76,9 @@ export default function TerminDetailScreen() {
       await queryClient.cancelQueries({ queryKey: lineupKey });
       const previous = queryClient.getQueryData<api.ApiLineup>(lineupKey);
       if (previous) {
-        const player = [...previous.pool, ...previous.red, ...previous.green].find((p) => p.id === playerId);
+        const player = [...previous.pool, ...previous.red, ...previous.green, ...(previous.notAttending ?? [])].find(
+          (p) => p.id === playerId
+        );
         if (player) {
           const next = withoutPlayer(previous, playerId);
           if (team === 'red') next.red = [...next.red, player];
@@ -123,6 +126,7 @@ export default function TerminDetailScreen() {
           pool: [...previous.pool, ...previous.red, ...previous.green],
           red: [],
           green: [],
+          notAttending: previous.notAttending ?? [],
         });
       }
       return { previous };
@@ -326,6 +330,56 @@ export default function TerminDetailScreen() {
             </Text>
           )}
         </VStack>
+
+        {canEdit && Boolean(lineup?.notAttending?.length) && (
+          <VStack className="gap-2.5">
+            <Text className="font-body-semibold text-dim" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
+              Nicht dabei
+            </Text>
+            <Text className="font-body text-muted" style={{ fontSize: 12 }}>
+              Zusage/Absage steht noch aus oder wurde abgesagt — wer hier trotzdem eingeteilt wird, gilt danach als zugesagt.
+            </Text>
+            <VStack className="gap-2">
+              {(lineup?.notAttending ?? []).map((p) => (
+                <HStack
+                  key={p.id}
+                  className="items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-3 py-2.5"
+                >
+                  <HStack className="items-center gap-2">
+                    <Text className="font-body-semibold text-ink" style={{ fontSize: 13.5 }}>
+                      {p.name}
+                    </Text>
+                    <Text className="font-body text-muted-soft" style={{ fontSize: 11.5 }}>
+                      {p.rsvpStatus === 'no' ? 'Abgesagt' : 'Keine Antwort'}
+                    </Text>
+                  </HStack>
+                  <HStack className="gap-2">
+                    <Pressable
+                      onPress={() => assign(p.id, 'red')}
+                      disabled={busyPlayerId === p.id}
+                      className="rounded-[10px] px-3 py-1.5"
+                      style={{ backgroundColor: 'rgba(226,59,59,0.14)' }}
+                    >
+                      <Text className="font-body-semibold text-red" style={{ fontSize: 12 }}>
+                        Rot
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => assign(p.id, 'green')}
+                      disabled={busyPlayerId === p.id}
+                      className="rounded-[10px] px-3 py-1.5"
+                      style={{ backgroundColor: 'rgba(47,191,110,0.14)' }}
+                    >
+                      <Text className="font-body-semibold text-green" style={{ fontSize: 12 }}>
+                        Grün
+                      </Text>
+                    </Pressable>
+                  </HStack>
+                </HStack>
+              ))}
+            </VStack>
+          </VStack>
+        )}
 
         <Pressable
           onPress={() => router.push(`/(app)/(tabs)/termine/${fixtureId}/ergebnis`)}
