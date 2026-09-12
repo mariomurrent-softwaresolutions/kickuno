@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -28,9 +28,7 @@ export default function TerminDetailScreen() {
   const queryClient = useQueryClient();
   const canEdit = membership?.role === 'admin' || membership?.role === 'organizer';
 
-  const [busyPlayerId, setBusyPlayerId] = useState<string | null>(null);
   const [autoBalancing, setAutoBalancing] = useState(false);
-  const [clearing, setClearing] = useState(false);
 
   const fixtureQuery = useQuery({
     queryKey: ['fixture', fixtureId],
@@ -52,44 +50,102 @@ export default function TerminDetailScreen() {
   const lineup = lineupQuery.data;
   const hasResult = Boolean(resultQuery.data?.result);
 
-  function invalidateLineup() {
-    queryClient.invalidateQueries({ queryKey: ['lineup', fixtureId] });
+  const lineupKey = ['lineup', fixtureId];
+
+  /** Removes `playerId` from wherever it currently sits in a lineup snapshot. */
+  function withoutPlayer(l: api.ApiLineup, playerId: string): api.ApiLineup {
+    return {
+      pool: l.pool.filter((p) => p.id !== playerId),
+      red: l.red.filter((p) => p.id !== playerId),
+      green: l.green.filter((p) => p.id !== playerId),
+    };
   }
 
-  async function assign(playerId: string, team: 'red' | 'green' | null) {
-    setBusyPlayerId(playerId);
-    try {
-      await api.assignLineupPlayer(fixtureId, playerId, team);
-      invalidateLineup();
-    } finally {
-      setBusyPlayerId(null);
-    }
+  // Optimistic assign/unassign (implementation-plan.md §4.4: "moving a
+  // player between red/green/pool" should feel instant, like the
+  // prototype's plain setState). `onMutate` moves the chip in the
+  // ['lineup', fixtureId] cache immediately; `onError` rolls back to the
+  // pre-move snapshot; `onSuccess` swaps in the server's own recomputed
+  // lineup (already returned by `PATCH .../lineup` — no separate
+  // invalidate+refetch needed).
+  const assignMutation = useMutation({
+    mutationFn: ({ playerId, team }: { playerId: string; team: 'red' | 'green' | null }) =>
+      api.assignLineupPlayer(fixtureId, playerId, team),
+    onMutate: async ({ playerId, team }) => {
+      await queryClient.cancelQueries({ queryKey: lineupKey });
+      const previous = queryClient.getQueryData<api.ApiLineup>(lineupKey);
+      if (previous) {
+        const player = [...previous.pool, ...previous.red, ...previous.green].find((p) => p.id === playerId);
+        if (player) {
+          const next = withoutPlayer(previous, playerId);
+          if (team === 'red') next.red = [...next.red, player];
+          else if (team === 'green') next.green = [...next.green, player];
+          else next.pool = [...next.pool, player];
+          queryClient.setQueryData(lineupKey, next);
+        }
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(lineupKey, context.previous);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(lineupKey, data);
+    },
+  });
+
+  function assign(playerId: string, team: 'red' | 'green' | null) {
+    assignMutation.mutate({ playerId, team });
+  }
+
+  const busyPlayerId = assignMutation.isPending ? (assignMutation.variables?.playerId ?? null) : null;
+
+  // Same optimistic idea as `assignMutation`, just for the bulk "clear
+  // everyone back to the pool" action — one instant cache update instead
+  // of waiting on N sequential unassigns. The requests themselves still
+  // run sequentially (`mutationFn`, unchanged from before) since a
+  // mid-batch failure should leave a known partial server state rather
+  // than racing; `onSettled` reconciles the cache with the server
+  // afterward regardless of how far the batch got.
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      if (!lineup) return;
+      for (const p of [...lineup.red, ...lineup.green]) {
+        // eslint-disable-next-line no-await-in-loop
+        await api.assignLineupPlayer(fixtureId, p.id, null);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: lineupKey });
+      const previous = queryClient.getQueryData<api.ApiLineup>(lineupKey);
+      if (previous) {
+        queryClient.setQueryData<api.ApiLineup>(lineupKey, {
+          pool: [...previous.pool, ...previous.red, ...previous.green],
+          red: [],
+          green: [],
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(lineupKey, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: lineupKey });
+    },
+  });
+
+  function clearAll() {
+    clearAllMutation.mutate();
   }
 
   async function autoBalance() {
     setAutoBalancing(true);
     try {
-      await api.autoBalanceLineup(fixtureId);
-      invalidateLineup();
+      const data = await api.autoBalanceLineup(fixtureId);
+      queryClient.setQueryData(lineupKey, data);
     } finally {
       setAutoBalancing(false);
-    }
-  }
-
-  async function clearAll() {
-    if (!lineup) return;
-    setClearing(true);
-    try {
-      for (const p of [...lineup.red, ...lineup.green]) {
-        // Sequential on purpose — one fixture's roster is small, and each
-        // unassign should land before the next so a mid-batch failure
-        // leaves the lineup in a known partial state rather than racing.
-        // eslint-disable-next-line no-await-in-loop
-        await api.assignLineupPlayer(fixtureId, p.id, null);
-      }
-      invalidateLineup();
-    } finally {
-      setClearing(false);
     }
   }
 
@@ -159,12 +215,12 @@ export default function TerminDetailScreen() {
             )}
             <Pressable
               onPress={clearAll}
-              disabled={clearing || eingeteiltCount === 0}
+              disabled={clearAllMutation.isPending || eingeteiltCount === 0}
               className="flex-1 items-center rounded-[13px] border py-3 active:opacity-80"
               style={{ borderColor: colors.hairline }}
             >
               <Text className="font-body-semibold text-muted" style={{ fontSize: 13.5 }}>
-                {clearing ? 'Leert…' : 'Zurücksetzen'}
+                {clearAllMutation.isPending ? 'Leert…' : 'Zurücksetzen'}
               </Text>
             </Pressable>
           </HStack>

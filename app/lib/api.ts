@@ -258,10 +258,24 @@ export function listHalls(groupId: string) {
   return request<{ docs: ApiHall[] }>(`/api/halls${qs}`);
 }
 
-export function createHall(data: { group: string; name: string }) {
+export function createHall(data: { group: string; name: string; capacity?: number; note?: string }) {
   return request<{ doc: ApiHall; message: string }>('/api/halls', {
     method: 'POST',
     body: data,
+  });
+}
+
+export function updateHall(hallId: string, data: { name?: string; capacity?: number | null; note?: string | null }) {
+  return request<{ doc: ApiHall; message: string }>(`/api/halls/${hallId}`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+/** 400 (surfaced via ApiError) if a fixture still references this hall — see Halls.ts's `beforeDelete` hook. */
+export function deleteHall(hallId: string) {
+  return request<{ doc: ApiHall; message: string }>(`/api/halls/${hallId}`, {
+    method: 'DELETE',
   });
 }
 

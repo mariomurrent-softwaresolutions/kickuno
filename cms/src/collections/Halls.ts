@@ -10,6 +10,30 @@ import { membershipGroupIds } from '../access/helpers';
 export const Halls: CollectionConfig = {
   slug: 'halls',
   admin: { useAsTitle: 'name' },
+  hooks: {
+    beforeDelete: [
+      // A hall referenced by an existing fixture can't just disappear —
+      // `fixtures.hall` is a plain (non-polymorphic) relationship with no
+      // cleanup hook of its own, so deleting one out from under a fixture
+      // would leave that fixture's `hall` pointing at a now-missing doc
+      // (populates as null, silently dropping "which hall" from Termine/
+      // Termin-Detail with no warning). Blocking here is cheaper and safer
+      // than teaching every hall-reading screen to handle a dangling
+      // reference.
+      async ({ req, id }) => {
+        const referencing = await req.payload.find({
+          collection: 'fixtures',
+          where: { hall: { equals: id } },
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
+        });
+        if (referencing.docs.length > 0) {
+          throw new Error('Diese Halle wird noch von mindestens einem Termin verwendet und kann nicht gelöscht werden.');
+        }
+      },
+    ],
+  },
   access: {
     read: async ({ req }) => {
       if (!req.user) return false;

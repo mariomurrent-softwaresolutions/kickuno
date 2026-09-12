@@ -17,6 +17,7 @@ import { PlayerSeasonStats } from './collections/PlayerSeasonStats';
 import { PlayerCareerStats } from './collections/PlayerCareerStats';
 import { LegacyPlayers } from './collections/LegacyPlayers';
 import { ImportBatches } from './collections/ImportBatches';
+import { AdminAccess } from './globals/AdminAccess';
 import { statsEndpoint } from './endpoints/stats';
 import { playerProfileEndpoint } from './endpoints/player-profile';
 
@@ -48,6 +49,7 @@ export default buildConfig({
     LegacyPlayers,
     ImportBatches,
   ],
+  globals: [AdminAccess],
   endpoints: [statsEndpoint, playerProfileEndpoint],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',

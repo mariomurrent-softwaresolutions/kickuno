@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Share } from 'react-native';
+import { useMemo, useRef, useState } from 'react';
+import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import * as Clipboard from 'expo-clipboard';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -47,12 +48,12 @@ function avatarInitials(row: ApiMemberRow): string {
  * has lived there since phase 4 (see `getting-started.md`), and duplicating
  * it in two places would just be inconsistent.
  *
- * No `expo-clipboard` dependency is available in this environment to
- * install (network egress blocked this session) — the invite code uses the
- * platform share sheet (`Share.share`, built into `react-native`) instead
- * of a direct clipboard copy. Sharing to WhatsApp directly, or copying from
- * the share sheet, both still get the group "Code kopiert — ab in die
- * WhatsApp-Gruppe" outcome the prototype's copy button describes.
+ * The invite-code button is a straight clipboard copy, matching the
+ * prototype's actual `onCopy` byte-for-byte: label flips "Teilen" ->
+ * "Kopiert" for ~2s (its `copied` boolean), no share sheet involved — the
+ * prototype's own button is literally named for sharing but its
+ * implementation only ever copies, on the assumption the recipient pastes
+ * that into WhatsApp themselves.
  */
 export default function GruppeScreen() {
   const { group, membership } = useAuth();
@@ -63,6 +64,8 @@ export default function GruppeScreen() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [regenerating, setRegenerating] = useState(false);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const membersQuery = useQuery({
     queryKey: ['group-members', group?.id],
@@ -81,13 +84,16 @@ export default function GruppeScreen() {
     [members, roleFilter]
   );
 
-  async function handleShareCode() {
+  async function handleCopyCode() {
     if (!group) return;
-    try {
-      await Share.share({ message: `Tritt unserer Hallenkick-Gruppe "${group.name}" bei — Code: ${group.inviteCode}` });
-    } catch {
-      // User dismissed the share sheet — nothing to do.
-    }
+    await Clipboard.setStringAsync(group.inviteCode);
+    setCopied(true);
+    if (copyTimeout.current) clearTimeout(copyTimeout.current);
+    // 2.2s, matching the prototype's own toast-dismiss timer (`flash()`'s
+    // setTimeout) — there's no app-wide toast yet (phase 8), so the button
+    // label flip is standing in for the "Code kopiert — ab in die
+    // WhatsApp-Gruppe" confirmation until one exists.
+    copyTimeout.current = setTimeout(() => setCopied(false), 2200);
   }
 
   async function handleRegenerateCode() {
@@ -137,12 +143,12 @@ export default function GruppeScreen() {
               </Text>
               <HStack className="gap-2">
                 <Pressable
-                  onPress={handleShareCode}
+                  onPress={handleCopyCode}
                   className="rounded-[12px] border px-3.5 py-2.5"
                   style={{ borderColor: colors.green, backgroundColor: 'rgba(47,191,110,0.10)' }}
                 >
                   <Text className="font-body-bold text-green" style={{ fontSize: 13 }}>
-                    Teilen
+                    {copied ? 'Kopiert' : 'Teilen'}
                   </Text>
                 </Pressable>
                 {isLeadership ? (

@@ -1,5 +1,7 @@
 import type { CollectionConfig } from 'payload';
 
+import { ADMIN_PANEL_ALLOWED_EMAIL, isAdminPanelLoginEnabled } from '../lib/admin-access';
+
 /**
  * Real auth (email + password) — implementation-plan.md §3.5. `strength`
  * lives on Memberships, not here, since it's a per-group rating (§3.1/§3.3).
@@ -17,6 +19,17 @@ export const Users: CollectionConfig = {
     useAsTitle: 'name',
   },
   access: {
+    // Locks down /admin itself (the Payload admin panel), not app login —
+    // `POST /api/users/login` and every real app user keep working exactly
+    // as before, regardless of this. Only the account whose email matches
+    // `ADMIN_PANEL_ALLOWED_EMAIL` can ever reach /admin, and only once the
+    // `admin-access` global's `enabled` flag is switched on (defaults to
+    // off — see that global's own doc comment for the reasoning and how
+    // to flip it on without a chicken-and-egg lockout).
+    admin: async ({ req }) => {
+      if (!req.user || req.user.email !== ADMIN_PANEL_ALLOWED_EMAIL) return false;
+      return isAdminPanelLoginEnabled(req.payload);
+    },
     // TODO(access): once fixtures/lineups/matchResults exist (§3.1), scope
     // this to "members of any group I share" — for now just require being
     // signed in at all, rather than the fully world-readable default. Signup

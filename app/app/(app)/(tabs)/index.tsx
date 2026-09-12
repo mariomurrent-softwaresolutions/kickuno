@@ -1,6 +1,7 @@
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -50,11 +51,51 @@ export default function StartScreen() {
     enabled: Boolean(nextFixture) && features.rsvp,
   });
 
-  async function respond(status: 'yes' | 'no') {
+  // Optimistic RSVP (implementation-plan.md §4.4): "Bin dabei"/"Kann nicht"
+  // should feel instant, no spinner, same as the prototype's plain
+  // setState. `onMutate` writes the new status (and an adjusted yesCount)
+  // straight into the ['fixture-summary', ...] cache before the request
+  // even lands; `onError` rolls that back; `onSuccess` reconciles yesCount
+  // with the server's own count (still authoritative — other members'
+  // RSVPs aren't reflected in our optimistic guess).
+  const rsvpMutation = useMutation({
+    mutationFn: (status: 'yes' | 'no') => api.setRsvp(nextFixture!.id, status),
+    onMutate: async (status) => {
+      if (!nextFixture) return undefined;
+      const summaryKey = ['fixture-summary', nextFixture.id];
+      await queryClient.cancelQueries({ queryKey: summaryKey });
+      const previousSummary = queryClient.getQueryData<api.ApiRsvpSummary>(summaryKey);
+      const previousStatus = previousSummary?.myStatus ?? null;
+      const previousCount = previousSummary?.yesCount ?? nextFixture.rsvpYesCount ?? 0;
+      let nextCount = previousCount;
+      if (previousStatus !== status) {
+        if (status === 'yes') nextCount += 1;
+        else if (previousStatus === 'yes') nextCount -= 1;
+      }
+      queryClient.setQueryData<api.ApiRsvpSummary>(summaryKey, {
+        myStatus: status,
+        yesCount: Math.max(0, nextCount),
+      });
+      return { previousSummary, summaryKey };
+    },
+    onError: (_err, _status, context) => {
+      if (context?.summaryKey) queryClient.setQueryData(context.summaryKey, context.previousSummary);
+    },
+    onSuccess: (data, _status, context) => {
+      if (context?.summaryKey) {
+        queryClient.setQueryData<api.ApiRsvpSummary>(context.summaryKey, (old) => ({
+          myStatus: old?.myStatus ?? null,
+          yesCount: data.yesCount,
+        }));
+      }
+      queryClient.invalidateQueries({ queryKey: ['fixtures', group?.id] });
+    },
+  });
+
+  function respond(status: 'yes' | 'no') {
     if (!nextFixture) return;
-    await api.setRsvp(nextFixture.id, status);
-    queryClient.invalidateQueries({ queryKey: ['fixture-summary', nextFixture.id] });
-    queryClient.invalidateQueries({ queryKey: ['fixtures', group?.id] });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    rsvpMutation.mutate(status);
   }
 
   const capacity = (typeof nextFixture?.hall === 'object' && nextFixture.hall?.capacity) || 16;

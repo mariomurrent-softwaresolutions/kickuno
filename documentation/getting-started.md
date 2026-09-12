@@ -328,14 +328,10 @@ consistently:
   written before the phase-4 addition of a 5th "Profil" tab, which is
   where Abmelden actually lives now — repeating it in two places would be
   redundant.
-- **Invite code uses the platform share sheet, not a clipboard copy.**
-  `expo-clipboard` isn't installed, and this environment's network egress
-  is blocked from adding it this session — `Share.share()` (built into
-  `react-native`, no new dependency) covers both "share to WhatsApp
-  directly" and "copy from the share sheet." Installing `expo-clipboard`
-  for a direct one-tap copy is a reasonable, low-risk follow-up from your
-  own Mac terminal (`cd app && npx expo install expo-clipboard`) whenever
-  it's convenient.
+- ~~Invite code uses the platform share sheet, not a clipboard copy.~~
+  **Superseded, see "Since phase 7" below** — the button now does a real
+  `expo-clipboard` copy, matching the prototype's actual `onCopy` behavior
+  exactly.
 
 Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
 clean.
@@ -347,7 +343,201 @@ left before a real go-live is operational, not architectural: running the
 group's actual historic backfill through the phase-6 CLI, and phase 8's
 polish pass (toast/animation parity, pull-to-refresh, loading/error
 states, push-notification reminders, EAS build + store submission prep) —
-none of it started yet.
+still mostly unstarted, except for the slice below.
+
+## Since phase 7: three phase-8 items pulled forward (haptics, clipboard, optimistic updates)
+
+Not a full phase-8 pass — toasts, pull-to-refresh polish, and push
+notifications are all still untouched — but three specific items from
+§4.1/§4.4 that don't depend on any of that:
+
+- **`expo-haptics`** (§4.1: "light impact on the goal +/- steppers and RSVP
+  buttons — cheap and expected on a real device") is wired in on both:
+  `components/ui/stepper.tsx`'s shared `Stepper` (covers Ergebnis
+  erfassen's per-player and own-goal steppers automatically, since they
+  all go through it) and the Start screen's "Bin dabei"/"Kann nicht"
+  buttons. Fire-and-forget (`.catch(() => {})`) — haptics are a side
+  effect that should never block or fail the actual action, e.g. on a
+  simulator with no haptics engine.
+- **`expo-clipboard`** replaces the Share-sheet stand-in on the Gruppe
+  screen's invite-code button from phase 7. Re-reading the prototype's own
+  source closely: its "Teilen" button was never actually a share sheet —
+  `onCopy` only ever does `this.setState({ copied: true })` and flashes
+  "Code kopiert — ab in die WhatsApp-Gruppe", i.e. it's a plain clipboard
+  copy that assumes the recipient pastes the code into WhatsApp
+  themselves. `Clipboard.setStringAsync(group.inviteCode)` now matches
+  that exactly, with the button label flipping "Teilen" -> "Kopiert" for
+  ~2.2s (the same duration as the prototype's own toast-dismiss timer) —
+  standing in for a real toast until phase 8 builds one.
+- **Optimistic updates** (§4.4's list: "RSVP yes/no, moving a player
+  between red/green/pool, the goal +/- steppers, the weekly-repeat
+  switch"). Auditing that list against what's actually server-round-trip
+  vs. local state: the goal steppers (Ergebnis erfassen accumulates all of
+  it in local `useState` until one final "Ergebnis speichern") and the
+  weekly-repeat switch (`Neuer Termin`'s `repeatWeekly` toggle, also pure
+  local state until submit) were already instant — there was never a
+  per-tap network call to make optimistic. The two that *do* hit the
+  server on every tap now use react-query's `onMutate`/`onError`/
+  `onSuccess` pattern instead of an await-then-invalidate round trip:
+  - **RSVP** (`(tabs)/index.tsx`) — `onMutate` writes the new
+    `myStatus`/adjusted `yesCount` straight into the
+    `['fixture-summary', fixtureId]` cache before the request lands;
+    `onError` rolls back to the pre-tap snapshot; `onSuccess` reconciles
+    `yesCount` with the server's own count (still authoritative, since
+    other members' RSVPs aren't reflected in our own optimistic guess).
+  - **Lineup assign/unassign** (Termin-Detail's red/green/pool chips) —
+    `onMutate` moves the player between `pool`/`red`/`green` in the
+    `['lineup', fixtureId]` cache immediately; `onError` restores the
+    prior snapshot; `onSuccess` swaps in the server's own recomputed
+    lineup (`PATCH .../lineup` already returns the full `ApiLineup` — no
+    separate invalidate+refetch needed). "Zurücksetzen" (clear all) got
+    the same optimistic treatment (one immediate cache update merging
+    red+green back into the pool, reconciled via `onSettled` once the
+    underlying sequential unassigns finish), and "Auto-Aufstellung" now
+    writes the server's direct response straight into the cache instead of
+    invalidating and re-fetching it a second time.
+
+One environment note worth flagging: this bridge's shell couldn't run
+`npx expo install expo-haptics expo-clipboard` (blocked network egress to
+the React Native Directory compatibility check, same as documented for
+phase 7's clipboard attempt) *or* a plain `npm install` for them (the repo
+also has darwin-arm64-only optional binaries like
+`@tailwindcss/oxide-darwin-arm64` in its lockfile, which fail an `EBADPLATFORM`
+check on this Linux bridge before npm gets to the actual new packages).
+Worked around it with `npm pack expo-haptics@57.0.2 expo-clipboard@57.0.2`
+(direct registry fetch, sidesteps whole-tree resolution) and manually
+extracted both tarballs into `app/node_modules/`, then added both to
+`app/package.json`'s `dependencies` by hand (`expo-clipboard` at `~57.0.2`,
+matching `expo-haptics`'s existing entry — Expo SDK 57's own modules now
+version-track the SDK major). That's enough for `tsc --noEmit` to resolve
+their types and for this session's own verification, but
+**`app/package-lock.json` was deliberately left untouched** — reconciling
+it correctly requires the actual dependency-resolution machinery this
+bridge can't run for a project with platform-specific optional deps. Run a
+plain `npm install` yourself once, from a real terminal on your Mac, to
+let npm regenerate the lockfile properly before your next `npm ci`/CI run;
+until then everything works locally off the node_modules already sitting
+there, same as after any manual install.
+
+## Since phase 8 (partial): hall management (closes rough edge #7)
+
+A group's halls previously could only ever be created one at a time, on
+the fly, from `(tabs)/termine/neu.tsx`'s free-text fallback — no way to
+rename one, set a capacity/note after the fact, or remove one. Not called
+out in any specific phase (the original prototype hardcoded 3 fixed
+halls), but flagged as worth adding "once a group has more than one hall"
+both in this doc's own rough-edges list and in implementation-plan.md's
+§10 open items.
+
+**`cms/`** — `Halls.ts` gained a `beforeDelete` hook: it looks up any
+`fixtures` row still referencing the hall being deleted
+(`overrideAccess: true`, `depth: 0`, `limit: 1` — existence check only)
+and throws a plain `Error` if one exists, which Payload surfaces to the
+REST client as `{errors: [{message: ...}]}` — already parsed by
+`lib/api.ts`'s `request()` into `ApiError.message`, the same pattern
+`Memberships.ts`'s existing `beforeChange` hook uses. This blocks deletion
+server-side rather than silently orphaning a fixture's `hall` reference.
+
+**`app/`** — `lib/api.ts`'s `createHall` now also accepts `capacity`/
+`note`, and gained `updateHall(hallId, data)` / `deleteHall(hallId)`. New
+screen `(tabs)/gruppe/hallen.tsx` (admin-only, matching Einstellungen's
+own admin gate): a list of the group's halls, each tappable into an inline
+edit form (name/capacity/note + Löschen), and a "+ Neue Halle" row that
+expands into the same form for creating one. Saving/deleting invalidates
+both `['halls', groupId]` and any `['fixtures', ...]` query, since fixture
+rows embed their hall (depth=1) in Termine/Start/Termin-Detail and a
+rename should show up there without waiting for those screens' own
+refetch interval. A delete blocked by the `beforeDelete` hook above shows
+that hook's German error message as-is. Reachable from a new "Hallen"
+section at the bottom of `(tabs)/gruppe/einstellungen.tsx`.
+
+One environment note: this bridge's `node_modules/typescript` turned out
+to be v7 (the native/Rust-ish rewrite, not the old pure-JS compiler) and
+ships as a small loader plus a platform-specific native binary package
+(`@typescript/typescript-<platform>-<arch>`) — only the darwin-arm64 one
+was present (matching your actual Mac), so `npx tsc --noEmit` failed
+outright on this Linux bridge with "Unable to resolve
+@typescript/typescript-linux-arm64" before it could even parse a single
+file. Same `npm pack` workaround as phase 8's haptics/clipboard packages:
+fetched `@typescript/typescript-linux-arm64@7.0.2`'s tarball directly and
+extracted it into `node_modules/@typescript/typescript-linux-arm64` on
+this bridge only. This doesn't touch `app/package.json`,
+`app/package-lock.json`, or anything under `app/`/`cms/` — it's purely
+local scaffolding so this session itself could run `tsc --noEmit`, and
+your Mac already has the darwin-arm64 binary it actually needs, so there's
+nothing to reconcile there.
+
+Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
+clean.
+
+## Since phase 8 (partial): admin-panel login lock (not in the original plan)
+
+The Payload admin panel at `/admin` was previously reachable by any real
+app user with valid credentials (Payload's own default when a collection
+has no explicit `access.admin`). Locked down to a single hardcoded
+account, off by default, on request — this only ever gates `/admin`
+itself; every app login (`POST /api/users/login`, and everything the
+mobile app does) is completely unaffected.
+
+**`cms/`**:
+
+- **`cms/src/lib/admin-access.ts`** (new) — exports
+  `ADMIN_PANEL_ALLOWED_EMAIL` (the one account this is scoped to) and
+  `isAdminPanelLoginEnabled(payload)`, which reads the new
+  `admin-access` global's `enabled` flag via
+  `payload.findGlobal({ slug: 'admin-access', overrideAccess: true })` —
+  bypassing that global's own `read` access control on purpose, since
+  this is being called *from inside* an access-control check elsewhere
+  (`Users.ts`), not as a normal authenticated request. **Checked by
+  email, not by Mongo `_id`** — the first pass at this hardcoded an
+  ObjectId, which immediately locked the intended account out, because
+  an ObjectId is only ever valid within the one database it was read
+  from: it doesn't survive a fresh `npm run dev` against a new local
+  Mongo, a staging DB, or a restored backup. Email is the identity
+  that's actually meant to stay stable across all of those, so that's
+  what's checked now.
+- **`cms/src/globals/AdminAccess.ts`** (new) — a single-field global,
+  `enabled` (checkbox, **defaults to `false`**). Two independent gates
+  have to both pass before anyone reaches `/admin`: this flag, and
+  `Users.ts`'s hardcoded-email check below. Turning this on does *not*
+  open the panel to anyone else — it only lifts the kill-switch for the
+  one already-hardcoded account. `access.read`/`access.update` on this
+  global are themselves restricted to that same account, so no other
+  user can even see the toggle exists via the API. Deliberately
+  *doesn't* require `enabled: true` to update itself — that would make
+  it a one-way switch (once locked, the allowed account could never get
+  back into `/admin` to unlock it). Instead that account can always flip
+  it with a plain authenticated REST call —
+  `POST /api/globals/admin-access { "enabled": true }` using their
+  normal app login token — regardless of the panel's current lock
+  state, then log into `/admin` once it's back on. Note it's `POST`,
+  not `PATCH`: Payload's REST API updates a *global* via `POST`;
+  `PATCH` only applies to documents inside a regular collection (this
+  tripped up the first live test of this feature — see below).
+- **`Users.ts`** gained `access.admin`: returns `false` immediately unless
+  `req.user.email === ADMIN_PANEL_ALLOWED_EMAIL`, then defers to
+  `isAdminPanelLoginEnabled()`. `access.admin` is the Payload hook that
+  specifically gates the `/admin` UI — it has no effect on `read`/
+  `create`/`update`/`delete` access or the `auth`-provided
+  `POST /api/users/login`/`POST /api/users` endpoints, which is exactly
+  why app logins needed no changes here.
+
+Nothing seeds the `admin-access` global's document — Payload returns the
+field's `defaultValue` (`false`) until the allowed account's first
+`POST` creates it, so the very first admin-panel login for that account
+requires one authenticated REST call first (see above), not an admin-UI
+click (which would be the chicken-and-egg case this design avoids).
+
+Both `cd cms && npx tsc --noEmit` and `cd app && npx tsc --noEmit` are
+clean. Not runnable end-to-end from this bridge itself (no live
+Mongo/Payload instance reachable from it — see the rough edges below),
+but verified live against your actual running `cms` dev server via the
+desktop app's browser pane: confirmed `/admin` refused
+`mario@murrent.at` while `enabled` was `false`, flipped the global on
+with the authenticated `POST` above, and confirmed `/admin` then loaded
+the dashboard for that account. (The first attempt at this used `PATCH`
+instead of `POST` and got a genuinely confusing `404 Route not found` —
+worth remembering if this ever needs re-verifying.)
 
 ## Prerequisites
 
@@ -475,12 +665,10 @@ directly, or see version drift you don't expect, these two are why:
    only after an interactive first run that scaffolds `eslint-config-expo`
    (never done yet). Neither blocks anything today; worth setting up
    properly before relying on `npm run lint` in CI or a pre-commit hook.
-7. **No hall-management screen exists yet.** A group's first fixture has
-   nowhere to pick a hall from, so `(tabs)/termine/neu.tsx` falls back to a
-   plain text input that creates a `Hall` on the fly via `POST /api/halls`
-   the first time. Fine for now, but worth a real "manage halls" screen
-   (probably folded into Gruppe/Einstellungen, phase 7) once a group has
-   more than one hall.
+7. ~~No hall-management screen exists yet.~~ **Resolved (see "Since phase
+   8 (partial): hall management" above)** — `(tabs)/gruppe/hallen.tsx`,
+   reachable from Einstellungen. `(tabs)/termine/neu.tsx`'s free-text
+   on-the-fly-create fallback is untouched and still works alongside it.
 8. **Own goals are not attributed to a specific player.** `matchResults`
    only records `redOwnGoals`/`greenOwnGoals` at the team level, so
    `playerSeasonStats.ownGoals`/`playerCareerStats.matchOwnGoals` are
