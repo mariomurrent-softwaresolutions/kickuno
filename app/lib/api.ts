@@ -13,7 +13,7 @@ function getApiBaseUrl(): string {
   // Set EXPO_PUBLIC_API_URL in app/.env (see app/.env.example) — e.g. your
   // Mac's LAN IP when testing on a physical device, since "localhost" from
   // the device/simulator won't reach a server running on your machine.
-  return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+  return process.env.EXPO_PUBLIC_API_URL ?? 'https://api-kickuno.meecode.at';
 }
 
 export class ApiError extends Error {
