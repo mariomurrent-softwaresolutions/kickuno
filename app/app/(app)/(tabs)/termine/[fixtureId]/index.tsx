@@ -94,6 +94,13 @@ export default function TerminDetailScreen() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(lineupKey, data);
+      // Assigning a player who was in "Nicht dabei" marks their RSVP as
+      // 'yes' server-side (Fixtures.ts's PATCH .../lineup handler) — that
+      // changes the Zusagen count/attendance bar on the Start screen and
+      // the Termine list, and neither lives under ['lineup', ...], so they
+      // need their own invalidation or they'd keep showing the old count.
+      queryClient.invalidateQueries({ queryKey: ['fixtures'] });
+      queryClient.invalidateQueries({ queryKey: ['fixture-summary', fixtureId] });
     },
   });
 

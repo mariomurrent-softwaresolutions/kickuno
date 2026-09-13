@@ -4,6 +4,7 @@ import { membershipGroupIds } from '../access/helpers';
 import { getOrCreateCurrentSeason } from '../lib/season';
 import { eligiblePlayerIds, allGroupMemberIds, membershipStrengthByUser, seasonGoalsByUser, buildLineupSummaries } from '../lib/lineup';
 import { recomputeStatsForPlayers } from '../lib/stats';
+import { recomputeSuggestedStrength } from '../lib/strength';
 import { polyIds, polyRef, polyRefs, polyValue } from '../lib/polymorphic';
 
 /**
@@ -702,6 +703,18 @@ export const Fixtures: CollectionConfig = {
         const players = lineup ? [...polyRefs(lineup.redPlayers), ...polyRefs(lineup.greenPlayers)] : [];
 
         await recomputeStatsForPlayers(req.payload, { groupId, seasonId, players });
+
+        // §3.3: recompute the whole group's suggestedStrength alongside the
+        // stats above — this endpoint is the closest thing this codebase
+        // has to a `matchResults.afterChange` hook (see that function's own
+        // doc comment). Was written but never actually called from here —
+        // `suggestedStrength` silently never updated after a single result
+        // was ever saved. Skipped entirely when `features.strength` is off,
+        // same as Memberships.ts's own strength endpoints — no point
+        // computing a number nothing in the app will ever show.
+        if (group?.features?.strength !== false) {
+          await recomputeSuggestedStrength(req.payload, groupId);
+        }
 
         return Response.json({ result }, { status: 200 });
       },
