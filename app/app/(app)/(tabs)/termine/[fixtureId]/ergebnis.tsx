@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -8,6 +8,8 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { Stepper } from '@/components/ui/stepper';
 import { PlayerChip } from '@/components/ui/player-chip';
 import * as api from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
+import { colors } from '@/theme/tokens';
 
 /**
  * Ergebnis erfassen — implementation-plan.md §4.5. The roster comes from
@@ -22,6 +24,8 @@ import * as api from '@/lib/api';
 export default function ErgebnisScreen() {
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
   const queryClient = useQueryClient();
+
+  const { group } = useAuth();
 
   const lineupQuery = useQuery({
     queryKey: ['lineup', fixtureId],
@@ -89,9 +93,17 @@ export default function ErgebnisScreen() {
         mvp: mvpId ?? undefined,
         goals,
       });
+      // Saving a result recomputes playerSeasonStats/playerCareerStats (and,
+      // if features.strength is on, suggestedStrength) server-side — none
+      // of that lives at ['result'/'fixture'/'fixtures'], so every screen
+      // that reads it needs its own invalidation here too, or it'll keep
+      // showing pre-save numbers until the user happens to pull-to-refresh.
       queryClient.invalidateQueries({ queryKey: ['result', fixtureId] });
       queryClient.invalidateQueries({ queryKey: ['fixture', fixtureId] });
       queryClient.invalidateQueries({ queryKey: ['fixtures'] });
+      queryClient.invalidateQueries({ queryKey: ['stats', group?.id] });
+      queryClient.invalidateQueries({ queryKey: ['player-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['group-members', group?.id] });
       router.back();
     } finally {
       setSaving(false);
@@ -101,7 +113,20 @@ export default function ErgebnisScreen() {
   const noPlayers = red.length === 0 && green.length === 0;
 
   return (
-    <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 48 }}>
+    <ScrollView
+      className="flex-1 bg-bg-screen"
+      contentContainerStyle={{ paddingBottom: 48 }}
+      refreshControl={
+        <RefreshControl
+          tintColor={colors.dim}
+          refreshing={lineupQuery.isFetching || resultQuery.isFetching}
+          onRefresh={() => {
+            lineupQuery.refetch();
+            resultQuery.refetch();
+          }}
+        />
+      }
+    >
       <ScreenHeader eyebrow="ERGEBNIS" title="Rot gegen Grün" onBack={() => router.back()} />
 
       <VStack className="gap-6 px-5 pt-4">
