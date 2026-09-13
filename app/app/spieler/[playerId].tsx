@@ -1,4 +1,4 @@
-import { ScrollView } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -60,7 +60,16 @@ export default function SpielerprofilScreen() {
 
   if (!profile) {
     return (
-      <ScrollView className="flex-1 bg-bg-screen">
+      <ScrollView
+        className="flex-1 bg-bg-screen"
+        refreshControl={
+          <RefreshControl
+            tintColor={colors.dim}
+            refreshing={profileQuery.isFetching}
+            onRefresh={() => profileQuery.refetch()}
+          />
+        }
+      >
         <ScreenHeader
           eyebrow="SPIELERPROFIL"
           title={profileQuery.isLoading ? '…' : 'Nicht gefunden'}
@@ -80,7 +89,17 @@ export default function SpielerprofilScreen() {
   const goalDiffColor = profile.season.goalDiff >= 0 ? colors.green : colors.red;
 
   return (
-    <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView
+      className="flex-1 bg-bg-screen"
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={
+        <RefreshControl
+          tintColor={colors.dim}
+          refreshing={profileQuery.isFetching}
+          onRefresh={() => profileQuery.refetch()}
+        />
+      }
+    >
       <ScreenHeader eyebrow="SPIELERPROFIL" title={profile.player.name} onBack={() => router.back()} />
       <VStack className="gap-6 px-5 pt-4">
         <HStack className="items-center gap-4">

@@ -1,5 +1,3 @@
-// @ts-ignore
-import * as DevClient from 'expo-dev-client';
 import { Redirect, Stack } from 'expo-router';
 import { useAuth } from '@/lib/auth-context';
 import { FeaturesProvider } from '@/lib/features-context';

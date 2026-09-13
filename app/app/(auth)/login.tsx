@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import {Image} from "expo-image";
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { colors } from '@/theme/tokens';
+import { useAssets } from "expo-asset";
 
 type Mode = 'login' | 'register';
 
@@ -19,6 +21,7 @@ type Mode = 'login' | 'register';
 export default function LoginScreen() {
   const { login, register } = useAuth();
   const insets = useSafeAreaInsets();
+  const [iconAsset] = useAssets([require('../../assets/images/icon.png')]);
   const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -83,21 +86,28 @@ export default function LoginScreen() {
               className="overflow-hidden rounded-[22px]"
               style={{ width: 74, height: 74, shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 18, shadowOffset: { width: 0, height: 12 } }}
             >
-              <Box className="flex-1 bg-red" />
-              <Box className="flex-1 bg-green" />
+              {iconAsset?.[0] ? (
+                <Image
+                  source={{ uri: iconAsset[0].uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Box className="flex-1 bg-bg-card" />
+              )}
             </HStack>
             <VStack className="gap-2">
               <Text
                 className="font-heading uppercase text-ink"
                 style={{ fontSize: 44, lineHeight: 42 }}
               >
-                Unsere{'\n'}Fußballgruppe
+                Kickuno
               </Text>
               <Text
                 className="font-body text-muted-soft"
                 style={{ fontSize: 15, lineHeight: 22, maxWidth: 270 }}
               >
-                Termine, Aufstellungen und alle Zahlen der Runde — Donnerstag, 20:00, Halle Ost.
+                Termine, Aufstellungen und alle Zahlen.
               </Text>
             </VStack>
           </VStack>
