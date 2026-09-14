@@ -62,6 +62,11 @@ export default function SaisonTermineScreen() {
                       time={fixture.time}
                       hallName={typeof fixture.hall === 'object' ? fixture.hall?.name : undefined}
                       hasResult={fixture.hasResult ?? false}
+                      resultLabel={
+                        fixture.hasResult && typeof fixture.redScore === 'number' && typeof fixture.greenScore === 'number'
+                          ? `${fixture.redScore}:${fixture.greenScore}`
+                          : undefined
+                      }
                       onPress={() => router.push(`/(app)/(tabs)/termine/${fixture.id}`)}
                     />
                   ))}

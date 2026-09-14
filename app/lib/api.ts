@@ -151,6 +151,9 @@ export type ApiFixture = {
    * Termine list's "Ergebnis vorhanden" dot needs this instead.
    */
   hasResult?: boolean;
+  /** Present only when `hasResult` is true — the final, already-computed score (own goals folded in, see `ergebnis.tsx`). */
+  redScore?: number;
+  greenScore?: number;
 };
 
 export type ApiRsvpSummary = { yesCount: number; myStatus: 'yes' | 'no' | null };
@@ -251,6 +254,13 @@ export type ApiMemberRow = {
   suggestedStrength?: number | null;
   /** Present only when the caller is admin/organizer. */
   strengthSampleSize?: number;
+  /**
+   * Present only when the caller is admin/organizer — the only one who can
+   * edit it, from this same member-list screen. Everyone else only ever
+   * sees a player's nickname on the team-builder screens (`ApiPlayerSummary`),
+   * never here.
+   */
+  nickname?: string;
 };
 
 export function getGroupMembers(groupId: string, opts?: { role?: 'admin' | 'organizer' | 'player'; q?: string }) {
@@ -297,6 +307,14 @@ export function updateMembershipStrength(membershipId: string, strength: number)
 /** Sets `strength = suggestedStrength` — 400 if no suggestion yet, 403 if `group.features.strength` is off (§3.3/§3.6). */
 export function applySuggestedStrength(membershipId: string) {
   return request<{ doc: unknown }>(`/api/memberships/${membershipId}/apply-suggested-strength`, { method: 'POST' });
+}
+
+/** Admin/organizer only — same access as `updateMembershipStrength`. Pass `null`/`''` to clear it. */
+export function updateMembershipNickname(membershipId: string, nickname: string | null) {
+  return request<{ doc: unknown; message?: string }>(`/api/memberships/${membershipId}`, {
+    method: 'PATCH',
+    body: { nickname: nickname ?? '' },
+  });
 }
 
 // --- Fixtures / halls / rsvps (§3.6) ---
@@ -386,6 +404,14 @@ export type ApiPlayerSummary = {
   position?: 'tor' | 'abwehr' | 'mitte' | 'sturm';
   /** Omitted by the server entirely when `features.strength` is off (§3.8). */
   strength?: number;
+  /**
+   * A group-specific nickname (feature request: "add a nickname to each
+   * player, display it only where we add them to a team") — present only
+   * on the team-builder shapes that flow through `lib/lineup.ts`'s
+   * `playerSummaries` (pool/red/green/notAttending), never on
+   * Spielerprofil or Statistik's ranked rows.
+   */
+  nickname?: string;
 };
 
 /** `rsvpStatus`: `'no'` = explicitly declined, `'none'` = never responded. */

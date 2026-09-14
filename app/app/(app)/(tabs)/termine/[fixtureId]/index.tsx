@@ -199,6 +199,12 @@ export default function TerminDetailScreen() {
           </Text>
         )}
 
+        {hasResult && resultQuery.data?.result ? (
+          <Text className="font-heading text-green" style={{ fontSize: 30 }}>
+            {resultQuery.data.result.redScore}:{resultQuery.data.result.greenScore}
+          </Text>
+        ) : null}
+
         <HStack className="gap-2.5">
           <StatTile label="Zusagen" value={String(zusagenCount)} />
           <StatTile label="Eingeteilt" value={String(eingeteiltCount)} />
@@ -247,6 +253,7 @@ export default function TerminDetailScreen() {
                 <PlayerChip
                   key={p.id}
                   name={p.name}
+                  nickname={p.nickname}
                   strength={features.strength ? p.strength : undefined}
                   tint="red"
                   onPress={canEdit ? () => assign(p.id, null) : undefined}
@@ -270,6 +277,7 @@ export default function TerminDetailScreen() {
                 <PlayerChip
                   key={p.id}
                   name={p.name}
+                  nickname={p.nickname}
                   strength={features.strength ? p.strength : undefined}
                   tint="green"
                   onPress={canEdit ? () => assign(p.id, null) : undefined}
@@ -298,6 +306,11 @@ export default function TerminDetailScreen() {
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 13.5 }}>
                       {p.name}
                     </Text>
+                    {p.nickname ? (
+                      <Text className="font-body text-muted-soft" style={{ fontSize: 11.5 }}>
+                        „{p.nickname}“
+                      </Text>
+                    ) : null}
                     {features.strength && typeof p.strength === 'number' ? (
                       <Text className="font-body text-muted" style={{ fontSize: 11.5 }}>
                         ★{p.strength}
@@ -356,6 +369,11 @@ export default function TerminDetailScreen() {
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 13.5 }}>
                       {p.name}
                     </Text>
+                    {p.nickname ? (
+                      <Text className="font-body text-muted-soft" style={{ fontSize: 11.5 }}>
+                        „{p.nickname}“
+                      </Text>
+                    ) : null}
                     <Text className="font-body text-muted-soft" style={{ fontSize: 11.5 }}>
                       {p.rsvpStatus === 'no' ? 'Abgesagt' : 'Keine Antwort'}
                     </Text>

@@ -8,6 +8,14 @@ export type PlayerSummary = {
   initials?: string;
   position?: string;
   strength?: number;
+  /**
+   * A group-specific nickname (`memberships.nickname`), shown only in the
+   * team-builder screens (pool/red/green/notAttending chips) that go
+   * through `playerSummaries`/`buildLineupSummaries` — not in Spielerprofil,
+   * Statistik, or the Gruppe member list, which all read straight from
+   * `users`/`playerSeasonStats` instead. Omitted entirely when unset.
+   */
+  nickname?: string;
 };
 
 /**
@@ -79,6 +87,34 @@ export async function membershipStrengthByUser(
 }
 
 /**
+ * Nickname per user id, from that group's memberships — a group-specific
+ * "what everyone actually calls them" shown only in the team-builder
+ * screens (see `PlayerSummary.nickname`'s own doc comment for why it's
+ * scoped that narrowly). Only users with a nickname actually set appear in
+ * the map; everyone else is meant to fall back to their real name.
+ */
+export async function membershipNicknameByUser(
+  payload: Payload,
+  groupId: string | number,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const { docs } = await payload.find({
+    collection: 'memberships',
+    where: { group: { equals: groupId } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  });
+  for (const m of docs) {
+    if (typeof m.nickname === 'string' && m.nickname.trim().length > 0) {
+      const uid = typeof m.user === 'object' && m.user !== null ? (m.user as { id: string | number }).id : (m.user as string | number);
+      map.set(String(uid), m.nickname.trim());
+    }
+  }
+  return map;
+}
+
+/**
  * Current-season goals per user id, from `playerSeasonStats` (§3.2/§5) — the
  * auto-balance tie-break, and its sole sort key when `features.strength` is
  * off. Missing rows (brand-new players, or before the stats hook has run
@@ -131,6 +167,7 @@ export async function playerSummaries(
   payload: Payload,
   userIds: (string | number)[],
   strengthById: Map<string, number> | null,
+  nicknameById?: Map<string, string> | null,
 ): Promise<PlayerSummary[]> {
   if (userIds.length === 0) return [];
 
@@ -152,6 +189,7 @@ export async function playerSummaries(
       initials: u.initials ?? undefined,
       position: u.position ?? undefined,
       ...(strengthById ? { strength: strengthById.get(String(u.id)) ?? 3 } : {}),
+      ...(nicknameById?.get(String(u.id)) ? { nickname: nicknameById.get(String(u.id)) } : {}),
     }));
 }
 
@@ -207,11 +245,13 @@ export async function buildLineupSummaries(
     }
   }
 
+  const nicknameById = await membershipNicknameByUser(payload, groupId);
+
   const [pool, red, green, notAttendingSummaries] = await Promise.all([
-    playerSummaries(payload, poolIds, strengthById),
-    playerSummaries(payload, redIds, strengthById),
-    playerSummaries(payload, greenIds, strengthById),
-    playerSummaries(payload, notAttendingIds, strengthById),
+    playerSummaries(payload, poolIds, strengthById, nicknameById),
+    playerSummaries(payload, redIds, strengthById, nicknameById),
+    playerSummaries(payload, greenIds, strengthById, nicknameById),
+    playerSummaries(payload, notAttendingIds, strengthById, nicknameById),
   ]);
 
   const notAttending: NotAttendingPlayer[] = notAttendingSummaries.map((p) => ({

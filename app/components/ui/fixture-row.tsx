@@ -11,11 +11,13 @@ type Props = {
   attendanceLabel?: string;
   /** Shows a small green dot when this fixture's Ergebnis is already recorded. */
   hasResult?: boolean;
+  /** e.g. "3:2" — shown beneath the hall name once an Ergebnis is recorded. */
+  resultLabel?: string;
   onPress: () => void;
 };
 
 /** Termine list row — implementation-plan.md §4.2/§4.5. */
-export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasResult, onPress }: Props) {
+export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasResult, resultLabel, onPress }: Props) {
   return (
     <Pressable onPress={onPress} className="active:opacity-80">
       <HStack className="items-center gap-3 rounded-[18px] border border-hairline bg-bg-card px-4 py-3">
@@ -40,6 +42,11 @@ export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasR
           {hallName ? (
             <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
               {hallName}
+            </Text>
+          ) : null}
+          {resultLabel ? (
+            <Text className="font-body-semibold text-green" style={{ fontSize: 12.5 }}>
+              {resultLabel}
             </Text>
           ) : null}
         </VStack>

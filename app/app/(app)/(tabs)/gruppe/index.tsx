@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -66,6 +66,9 @@ export default function GruppeScreen() {
   const [applyingId, setApplyingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editingNicknameId, setEditingNicknameId] = useState<string | null>(null);
+  const [nicknameDraft, setNicknameDraft] = useState('');
+  const [savingNickname, setSavingNickname] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ['group-members', group?.id],
@@ -121,6 +124,23 @@ export default function GruppeScreen() {
       await membersQuery.refetch();
     } finally {
       setApplyingId(null);
+    }
+  }
+
+  function startEditNickname(row: ApiMemberRow) {
+    setEditingNicknameId(row.id);
+    setNicknameDraft(row.nickname ?? '');
+  }
+
+  async function handleSaveNickname(row: ApiMemberRow) {
+    if (savingNickname) return;
+    setSavingNickname(true);
+    try {
+      await api.updateMembershipNickname(row.id, nicknameDraft.trim() || null);
+      await membersQuery.refetch();
+      setEditingNicknameId(null);
+    } finally {
+      setSavingNickname(false);
     }
   }
 
@@ -276,6 +296,53 @@ export default function GruppeScreen() {
                       </Pressable>
                     </HStack>
                   ) : null}
+
+                  {isLeadership && (
+                    <VStack
+                      className="gap-2 pt-2.5 mt-2.5"
+                      style={{ borderTopWidth: 1, borderTopColor: colors.hairline }}
+                    >
+                      {editingNicknameId === row.id ? (
+                        <HStack className="items-center gap-2">
+                          <TextInput
+                            value={nicknameDraft}
+                            onChangeText={setNicknameDraft}
+                            placeholder="Spitzname"
+                            placeholderTextColor={colors.dim}
+                            maxLength={30}
+                            autoFocus
+                            className="flex-1 rounded-[10px] border border-hairline bg-bg-sunken px-3 font-body-semibold text-ink"
+                            style={{ height: 36, fontSize: 13 }}
+                          />
+                          <Pressable onPress={() => setEditingNicknameId(null)} className="px-1 py-1.5">
+                            <Text className="font-body-semibold text-muted" style={{ fontSize: 12.5 }}>
+                              Abbrechen
+                            </Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => handleSaveNickname(row)}
+                            disabled={savingNickname}
+                            className="rounded-[10px] bg-green px-3 py-1.5"
+                          >
+                            <Text className="font-body-bold" style={{ fontSize: 12, color: '#07120C' }}>
+                              {savingNickname ? '…' : 'Speichern'}
+                            </Text>
+                          </Pressable>
+                        </HStack>
+                      ) : (
+                        <HStack className="items-center justify-between">
+                          <Text className="font-body text-muted-soft" style={{ fontSize: 12 }}>
+                            {row.nickname ? `Spitzname: „${row.nickname}“` : 'Kein Spitzname gesetzt'}
+                          </Text>
+                          <Pressable onPress={() => startEditNickname(row)} className="px-2 py-1">
+                            <Text className="font-body-semibold text-muted" style={{ fontSize: 12 }}>
+                              Bearbeiten
+                            </Text>
+                          </Pressable>
+                        </HStack>
+                      )}
+                    </VStack>
+                  )}
                 </Pressable>
               );
             })

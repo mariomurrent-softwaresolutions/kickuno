@@ -67,23 +67,38 @@ export const Fixtures: CollectionConfig = {
         });
         return { ...doc, rsvpYesCount: totalDocs };
       },
-      // Attaches a computed, non-persisted `hasResult` — whether a
-      // `matchResults` row actually exists for this fixture. Deliberately
-      // *not* derived from `status === 'played'`: that field only tells
-      // you what the fixture's own record says, and it's a plain editable
+      // Attaches computed, non-persisted `hasResult`/`redScore`/
+      // `greenScore` — whether a `matchResults` row actually exists for
+      // this fixture, and its final score if so (`matchResults.redScore`/
+      // `greenScore` are already the fully-computed score — own goals are
+      // folded in client-side before saving, see `ergebnis.tsx` — so no
+      // further math is needed here). `hasResult` deliberately *not*
+      // derived from `status === 'played'`: that field only tells you
+      // what the fixture's own record says, and it's a plain editable
       // select field with no readOnly guard, so it can drift out of sync
       // with reality (e.g. an admin toggling it directly from `/admin`,
       // or — found live, see getting-started.md — a result later deleted
       // without also reverting the fixture's status). The Termine list's
-      // green "Ergebnis vorhanden" dot needs the actual ground truth, so
-      // it checks the `matchResults` row itself instead.
+      // green "Ergebnis vorhanden" dot, and now the score shown beneath
+      // the hall name, both need the actual ground truth, so this checks
+      // the `matchResults` row itself instead — one `find` (not a plain
+      // `count`) so the score comes along for free in the same query.
       async ({ doc, req }) => {
-        const { totalDocs } = await req.payload.count({
+        const { docs } = await req.payload.find({
           collection: 'matchResults',
           where: { fixture: { equals: doc.id } },
+          limit: 1,
+          depth: 0,
           overrideAccess: true,
         });
-        return { ...doc, hasResult: totalDocs > 0 };
+        const result = docs[0];
+        return {
+          ...doc,
+          hasResult: Boolean(result),
+          ...(result
+            ? { redScore: typeof result.redScore === 'number' ? result.redScore : 0, greenScore: typeof result.greenScore === 'number' ? result.greenScore : 0 }
+            : {}),
+        };
       },
     ],
   },

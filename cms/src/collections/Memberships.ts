@@ -148,6 +148,15 @@ export const Memberships: CollectionConfig = {
       admin: { description: 'Admin/organizer-editable — never self-reported (§3.4).' },
     },
     {
+      name: 'nickname',
+      type: 'text',
+      maxLength: 30,
+      admin: {
+        description:
+          'Group-specific — shown only in the team-builder screens (pool/red/green chips), not on Spielerprofil, Statistik, or the Gruppe member list. Admin/organizer-editable, same access as `strength`.',
+      },
+    },
+    {
       name: 'suggestedStrength',
       type: 'number',
       min: 1,

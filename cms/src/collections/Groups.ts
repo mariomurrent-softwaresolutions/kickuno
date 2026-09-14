@@ -179,6 +179,12 @@ export const Groups: CollectionConfig = {
               ? {
                   suggestedStrength: typeof m.suggestedStrength === 'number' ? m.suggestedStrength : null,
                   strengthSampleSize: typeof m.strengthSampleSize === 'number' ? m.strengthSampleSize : 0,
+                  // Only surfaced to an admin/organizer, who is the only one
+                  // who can edit it (from this same member-list screen) —
+                  // everyone else sees a player's nickname only where it's
+                  // actually meant to show, the team-builder chips
+                  // (`lib/lineup.ts`'s `playerSummaries`), not here.
+                  nickname: typeof m.nickname === 'string' && m.nickname.trim() ? m.nickname.trim() : undefined,
                 }
               : {}),
           }));

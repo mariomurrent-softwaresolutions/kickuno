@@ -1,7 +1,7 @@
 import type { Endpoint } from 'payload';
 
 import { membershipGroupIds } from '../access/helpers';
-import { getOrCreateCurrentSeason } from '../lib/season';
+import { getActiveSeason } from '../lib/season';
 import { computeGroupPlayerStats, last5Form } from '../lib/stats-query';
 import type { PolyKind } from '../lib/polymorphic';
 
@@ -92,20 +92,29 @@ export const playerProfileEndpoint: Endpoint = {
       claimed = Boolean(legacy.claimedBy);
     }
 
-    const season = await getOrCreateCurrentSeason(req.payload, groupId);
+    // Deliberately `getActiveSeason` (read-only), never
+    // `getOrCreateCurrentSeason` — viewing a Spielerprofil is a plain read,
+    // and letting it spawn a season as a side effect was the same bug
+    // class already fixed in `strength.ts` and `stats.ts` (see
+    // getting-started.md). When a group genuinely has no active season
+    // yet, this just reports zeroed-out season stats (same as any brand-
+    // new player would show) instead of creating one.
+    const activeSeason = await getActiveSeason(req.payload, groupId);
     const [seasonRows, allTimeRows] = await Promise.all([
-      computeGroupPlayerStats(req.payload, groupId, season.id),
+      activeSeason ? computeGroupPlayerStats(req.payload, groupId, activeSeason.id) : Promise.resolve([]),
       computeGroupPlayerStats(req.payload, groupId),
     ]);
     const seasonRow = seasonRows.find((r) => r.playerId === String(playerId) && r.playerKind === kind);
     const allTimeRow = allTimeRows.find((r) => r.playerId === String(playerId) && r.playerKind === kind);
 
-    const seasonDoc = await req.payload.findByID({
-      collection: 'seasons',
-      id: season.id,
-      depth: 0,
-      overrideAccess: true,
-    });
+    const seasonDoc = activeSeason
+      ? await req.payload.findByID({
+          collection: 'seasons',
+          id: activeSeason.id,
+          depth: 0,
+          overrideAccess: true,
+        })
+      : null;
 
     const quote = (played: number, wins: number) => Math.round((wins / Math.max(1, played)) * 100);
 

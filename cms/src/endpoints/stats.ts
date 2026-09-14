@@ -1,7 +1,7 @@
 import type { Endpoint } from 'payload';
 
 import { membershipGroupIds } from '../access/helpers';
-import { getOrCreateCurrentSeason } from '../lib/season';
+import { getActiveSeason } from '../lib/season';
 import { computeGroupPlayerStats, rankPlayersByMetric, METRIC_KEYS, type MetricKey } from '../lib/stats-query';
 
 function isMetricKey(value: unknown): value is MetricKey {
@@ -61,7 +61,21 @@ export const statsEndpoint: Endpoint = {
         }
         seasonId = season.id;
       } else {
-        seasonId = (await getOrCreateCurrentSeason(req.payload, groupId)).id;
+        // Deliberately `getActiveSeason` (read-only), never
+        // `getOrCreateCurrentSeason` — this is a plain read (viewing the
+        // Statistik screen), and letting it spawn a season as a side
+        // effect was the exact bug reported live (see getting-started.md,
+        // "fixed a season-creation bug on result save" and its follow-up
+        // here): a group with zero active seasons that simply had its
+        // Saison stats *viewed* would silently get a brand-new one. When
+        // there's genuinely no active season yet, just report empty
+        // season stats instead — the admin starts one from Saisons when
+        // they're ready, nothing here should do it for them.
+        const active = await getActiveSeason(req.payload, groupId);
+        if (!active) {
+          return Response.json({ scope, metric, rows: [], podium: [] }, { status: 200 });
+        }
+        seasonId = active.id;
       }
     }
 
