@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -40,12 +41,24 @@ export default function SaisonTermineScreen() {
   const season = seasonsQuery.data?.docs.find((s) => s.id === seasonId);
   const groups = fixturesQuery.data ? groupFixturesByMonth(fixturesQuery.data.docs.slice().reverse()) : [];
 
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await fixturesQuery.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   return (
     <ScrollView
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={
-        <RefreshControl tintColor={colors.dim} refreshing={fixturesQuery.isFetching} onRefresh={() => fixturesQuery.refetch()} />
+        <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
       <ScreenHeader eyebrow="SAISON" title={season?.label ?? '…'} onBack={() => router.back()} />

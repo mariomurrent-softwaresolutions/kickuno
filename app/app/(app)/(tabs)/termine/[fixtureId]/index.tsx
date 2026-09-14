@@ -31,6 +31,11 @@ export default function TerminDetailScreen() {
   const canEdit = membership?.role === 'admin' || membership?.role === 'organizer';
 
   const [autoBalancing, setAutoBalancing] = useState(false);
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern. Clearing the lineup ("Zurücksetzen")
+  // invalidates the lineup query in the background and used to pop the
+  // native refresh spinner (and bounce the scroll) on its own.
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fixtureQuery = useQuery({
     queryKey: ['fixture', fixtureId],
@@ -170,6 +175,15 @@ export default function TerminDetailScreen() {
         lineup.green.reduce((sum, p) => sum + (p.strength ?? 0), 0)
       : null;
 
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fixtureQuery.refetch(), lineupQuery.refetch(), resultQuery.refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   const fixtureDate = fixture ? new Date(fixture.date) : null;
   const title = fixtureDate
     ? `${WEEKDAYS[fixtureDate.getUTCDay()]}, ${fixtureDate.getUTCDate()}. ${MONTHS[fixtureDate.getUTCMonth()]}`
@@ -180,15 +194,7 @@ export default function TerminDetailScreen() {
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={
-        <RefreshControl
-          tintColor={colors.dim}
-          refreshing={lineupQuery.isFetching}
-          onRefresh={() => {
-            fixtureQuery.refetch();
-            lineupQuery.refetch();
-            resultQuery.refetch();
-          }}
-        />
+        <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
       <ScreenHeader eyebrow="TERMIN" title={title} onBack={() => router.back()} />

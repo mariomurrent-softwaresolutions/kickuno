@@ -70,6 +70,12 @@ export default function GruppeScreen() {
   const [editingNicknameId, setEditingNicknameId] = useState<string | null>(null);
   const [nicknameDraft, setNicknameDraft] = useState('');
   const [savingNickname, setSavingNickname] = useState(false);
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern. "Neuer Code", "Übernehmen" and saving a
+  // Spitzname all call membersQuery.refetch() directly, which used to pop
+  // the native refresh spinner (and bounce the scroll) on every one of
+  // those actions, not just an actual pull-down.
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const membersQuery = useQuery({
     queryKey: ['group-members', group?.id],
@@ -145,12 +151,21 @@ export default function GruppeScreen() {
     }
   }
 
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await membersQuery.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   return (
     <ScrollView
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={
-        <RefreshControl tintColor={colors.dim} refreshing={membersQuery.isFetching} onRefresh={() => membersQuery.refetch()} />
+        <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
       <ScreenHeader eyebrow="GRUPPE" title={group?.name ?? '…'} />

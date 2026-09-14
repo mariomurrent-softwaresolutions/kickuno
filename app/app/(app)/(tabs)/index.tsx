@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -45,6 +46,21 @@ export default function StartScreen() {
     enabled: Boolean(group),
   });
   const nextFixture = upcoming.data?.docs[0];
+
+  // Tracks only an explicit pull-to-refresh — kept separate from
+  // upcoming.isFetching, which also flips true whenever an RSVP tap
+  // invalidates ['fixtures', ...] in the background. Binding RefreshControl
+  // to that instead made the native refresh spinner (and a scroll bounce)
+  // pop in on every RSVP tap, not just an actual pull-down.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await upcoming.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   const summary = useQuery({
     queryKey: ['fixture-summary', nextFixture?.id],
@@ -107,7 +123,7 @@ export default function StartScreen() {
     <ScrollView
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl tintColor={colors.dim} refreshing={upcoming.isFetching} onRefresh={() => upcoming.refetch()} />}
+      refreshControl={<RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />}
     >
       <ScreenHeader eyebrow="HALLENKICK" title="Servus" />
       <VStack className="gap-4 px-5 pt-4">

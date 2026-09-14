@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -45,6 +45,12 @@ export default function StatistikScreen() {
   const [metric, setMetric] = useState<ApiStatsMetric>('tore');
   // `null` means "no explicit choice yet — use whichever season is active".
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  // Tracks only an explicit pull-to-refresh — kept separate from
+  // statsQuery.isFetching, which also flips true on every background
+  // refetch caused by switching a chip. Wiring RefreshControl to that
+  // instead made the native refresh spinner pop in (and the ScrollView
+  // bounce) on every metric/scope tap, not just an actual pull-down.
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const seasonsQuery = useQuery({
     queryKey: ['seasons', group?.id],
@@ -60,9 +66,22 @@ export default function StatistikScreen() {
     queryKey: ['stats', group?.id, scope, metric, scope === 'season' ? effectiveSeasonId : null],
     queryFn: () => api.getStats(group!.id, scope, metric, scope === 'season' ? effectiveSeasonId : undefined),
     enabled: Boolean(group) && (scope === 'alltime' || Boolean(effectiveSeasonId)),
+    // Keep showing the previous metric's data while the next one loads so
+    // toggling chips doesn't collapse the podium/rows down to a spinner and
+    // snap back — that layout jump is what read as "the page moving".
+    placeholderData: (previousData) => previousData,
   });
 
   const podiumByRank = new Map((statsQuery.data?.podium ?? []).map((p) => [p.rank, p]));
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([statsQuery.refetch(), seasonsQuery.refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [statsQuery, seasonsQuery]);
 
   return (
     <ScrollView
@@ -71,11 +90,8 @@ export default function StatistikScreen() {
       refreshControl={
         <RefreshControl
           tintColor={colors.dim}
-          refreshing={statsQuery.isFetching}
-          onRefresh={() => {
-            statsQuery.refetch();
-            seasonsQuery.refetch();
-          }}
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
         />
       }
     >

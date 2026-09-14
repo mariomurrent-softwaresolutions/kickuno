@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -52,11 +53,18 @@ export default function TermineScreen() {
     enabled: Boolean(group && activeSeasonId),
   });
 
-  const isRefreshing = upcoming.isFetching || past.isFetching;
-  function refresh() {
-    upcoming.refetch();
-    past.refetch();
-    seasons.refetch();
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern. Any of the three queries refetching in
+  // the background (e.g. another screen invalidating ['fixtures']) no
+  // longer pops the native refresh spinner on its own.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  async function refresh() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([upcoming.refetch(), past.refetch(), seasons.refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
   }
 
   const upcomingGroups = upcoming.data ? groupFixturesByMonth(upcoming.data.docs) : [];

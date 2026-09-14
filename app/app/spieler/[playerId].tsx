@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -58,16 +59,24 @@ export default function SpielerprofilScreen() {
 
   const profile = profileQuery.data;
 
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await profileQuery.refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   if (!profile) {
     return (
       <ScrollView
         className="flex-1 bg-bg-screen"
         refreshControl={
-          <RefreshControl
-            tintColor={colors.dim}
-            refreshing={profileQuery.isFetching}
-            onRefresh={() => profileQuery.refetch()}
-          />
+          <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
         }
       >
         <ScreenHeader
@@ -93,11 +102,7 @@ export default function SpielerprofilScreen() {
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={
-        <RefreshControl
-          tintColor={colors.dim}
-          refreshing={profileQuery.isFetching}
-          onRefresh={() => profileQuery.refetch()}
-        />
+        <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
       <ScreenHeader eyebrow="SPIELERPROFIL" title={profile.player.name} onBack={() => router.back()} />

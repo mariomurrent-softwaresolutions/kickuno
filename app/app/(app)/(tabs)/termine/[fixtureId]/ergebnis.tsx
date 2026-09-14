@@ -46,6 +46,9 @@ export default function ErgebnisScreen() {
   const [mvpId, setMvpId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
+  // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
+  // comment on the same pattern.
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const existing = resultQuery.data?.result;
 
@@ -112,6 +115,15 @@ export default function ErgebnisScreen() {
     }
   }
 
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([lineupQuery.refetch(), resultQuery.refetch()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
   const noPlayers = red.length === 0 && green.length === 0;
 
   return (
@@ -119,14 +131,7 @@ export default function ErgebnisScreen() {
       className="flex-1 bg-bg-screen"
       contentContainerStyle={{ paddingBottom: 48 }}
       refreshControl={
-        <RefreshControl
-          tintColor={colors.dim}
-          refreshing={lineupQuery.isFetching || resultQuery.isFetching}
-          onRefresh={() => {
-            lineupQuery.refetch();
-            resultQuery.refetch();
-          }}
-        />
+        <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
       <ScreenHeader eyebrow="ERGEBNIS" title={`${teamOneName} gegen ${teamTwoName}`} onBack={() => router.back()} />
