@@ -38,6 +38,12 @@ const PODIUM_DISPLAY_ORDER: (1 | 2 | 3)[] = [2, 1, 3];
  * currently active — "statistics for each season and overall statistics"
  * (the latter is `scope === 'alltime'`, unaffected, already spanning every
  * season by design).
+ *
+ * The season-overview card, records, and all-time Hall of Fame
+ * (`feature-plan-stats-enhancements.md` §A/§B) originally lived at the top
+ * of this screen too, but that crowded a screen that was already doing a
+ * lot — they now live on their own pushed screen (`uebersicht.tsx`),
+ * reachable via the "Saison-Übersicht" row below.
  */
 export default function StatistikScreen() {
   const { group } = useAuth();
@@ -97,6 +103,23 @@ export default function StatistikScreen() {
     >
       <ScreenHeader eyebrow="STATISTIK" title="Rangliste" />
       <VStack className="gap-5 px-5 pt-4">
+        <Pressable
+          onPress={() => router.push('/(app)/(tabs)/statistik/uebersicht')}
+          className="flex-row items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5 active:opacity-85"
+        >
+          <VStack className="flex-1 gap-0.5 pr-3">
+            <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
+              Saison-Übersicht
+            </Text>
+            <Text className="font-body text-muted" style={{ fontSize: 12 }}>
+              Spieltage, Tore, Rekorde und die Hall of Fame.
+            </Text>
+          </VStack>
+          <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>
+            ›
+          </Text>
+        </Pressable>
+
         <HStack className="rounded-full border border-hairline bg-bg-card p-1">
           {(['season', 'alltime'] as const).map((s) => {
             const active = scope === s;

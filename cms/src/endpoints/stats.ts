@@ -2,7 +2,14 @@ import type { Endpoint } from 'payload';
 
 import { membershipGroupIds } from '../access/helpers';
 import { getActiveSeason } from '../lib/season';
-import { computeGroupPlayerStats, rankPlayersByMetric, METRIC_KEYS, type MetricKey } from '../lib/stats-query';
+import {
+  computeAllTimeRecords,
+  computeGroupPlayerStats,
+  computeSeasonSummary,
+  rankPlayersByMetric,
+  METRIC_KEYS,
+  type MetricKey,
+} from '../lib/stats-query';
 
 function isMetricKey(value: unknown): value is MetricKey {
   return typeof value === 'string' && (METRIC_KEYS as string[]).includes(value);
@@ -19,6 +26,21 @@ function isMetricKey(value: unknown): value is MetricKey {
  * group's currently active season (unchanged pre-feature behavior);
  * `scope=alltime` already spans every season by design and ignores it
  * entirely.
+ *
+ * `scope=summary` (`claude/feature-plan-stats-enhancements.md` §A) returns a
+ * different shape entirely — group/season-level totals (Spieltage, Tore,
+ * Rot-vs-Grün record, …) instead of a per-player ranked list. `season` is
+ * consulted the same way as `scope=season` (verified to belong to the
+ * group), but omitting it means all-time — unlike `scope=season`, there is
+ * no fallback-to-active-season here; the caller (the Statistik screen)
+ * always resolves the season id itself before asking for a summary.
+ *
+ * `scope=alltime`'s response also carries `records` (§B) — the all-time
+ * "Hall of Fame" (top single-match goal haul, longest-ever win streak),
+ * derived from the same `allRows` already fetched for the ranked list
+ * below, no extra queries. `scope=season` never carries this field;
+ * season-scoped records (biggest win, closest game, highest-scoring
+ * match) live on the `scope=summary` response instead.
  */
 export const statsEndpoint: Endpoint = {
   path: '/stats',
@@ -39,7 +61,26 @@ export const statsEndpoint: Endpoint = {
     }
 
     const scopeParam = req.query?.scope;
-    const scope: 'season' | 'alltime' = scopeParam === 'alltime' ? 'alltime' : 'season';
+    const scope: 'season' | 'alltime' | 'summary' =
+      scopeParam === 'alltime' ? 'alltime' : scopeParam === 'summary' ? 'summary' : 'season';
+
+    if (scope === 'summary') {
+      const seasonParam = req.query?.season;
+      let summarySeasonId: string | number | undefined;
+      if (typeof seasonParam === 'string' || typeof seasonParam === 'number') {
+        const season = await req.payload
+          .findByID({ collection: 'seasons', id: seasonParam, depth: 0, overrideAccess: true })
+          .catch(() => null);
+        const seasonGroupId =
+          season && (typeof season.group === 'object' && season.group !== null ? season.group.id : season.group);
+        if (!season || String(seasonGroupId) !== String(groupId)) {
+          return Response.json({ error: 'Invalid season' }, { status: 400 });
+        }
+        summarySeasonId = season.id;
+      }
+      const summary = await computeSeasonSummary(req.payload, groupId, summarySeasonId);
+      return Response.json({ scope, summary, seasonId: summarySeasonId }, { status: 200 });
+    }
 
     const metricParam = req.query?.metric;
     const metric: MetricKey = isMetricKey(metricParam) ? metricParam : 'tore';
@@ -81,7 +122,8 @@ export const statsEndpoint: Endpoint = {
 
     const allRows = await computeGroupPlayerStats(req.payload, groupId, seasonId);
     const { rows, podium } = rankPlayersByMetric(allRows, metric, scope);
+    const records = scope === 'alltime' ? computeAllTimeRecords(allRows) : undefined;
 
-    return Response.json({ scope, metric, rows, podium, seasonId }, { status: 200 });
+    return Response.json({ scope, metric, rows, podium, seasonId, records }, { status: 200 });
   },
 };

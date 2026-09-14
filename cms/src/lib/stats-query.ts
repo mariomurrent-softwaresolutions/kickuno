@@ -408,3 +408,243 @@ export function rankPlayersByMetric(
 
   return { rows: ranked, podium };
 }
+
+export type MatchExtreme = {
+  fixtureId: string;
+  date: string;
+  redScore: number;
+  greenScore: number;
+};
+
+/** §B: season-scoped match records — biggest win margin, closest non-draw game, highest-scoring match. Any of the three is `null` when the scope has no played matches. */
+export type SeasonRecords = {
+  biggestWin: MatchExtreme | null;
+  closestGame: MatchExtreme | null;
+  highestScoring: MatchExtreme | null;
+};
+
+const EMPTY_SEASON_RECORDS: SeasonRecords = { biggestWin: null, closestGame: null, highestScoring: null };
+
+export type SeasonSummary = {
+  /** Number of played fixtures (matches with a recorded result) in scope. */
+  playedCount: number;
+  totalGoals: number;
+  /** Rounded to one decimal. 0 when `playedCount` is 0. */
+  avgGoalsPerMatch: number;
+  /** Mean lineup size (red + green) across matches in scope, rounded to one decimal. 0 when no lineups are found. */
+  avgAttendance: number;
+  red: { wins: number; draws: number; losses: number };
+  green: { wins: number; draws: number; losses: number };
+  records: SeasonRecords;
+};
+
+const EMPTY_SEASON_SUMMARY: SeasonSummary = {
+  playedCount: 0,
+  totalGoals: 0,
+  avgGoalsPerMatch: 0,
+  avgAttendance: 0,
+  red: { wins: 0, draws: 0, losses: 0 },
+  green: { wins: 0, draws: 0, losses: 0 },
+  records: EMPTY_SEASON_RECORDS,
+};
+
+/**
+ * Group/season-level aggregate — companion to `computeGroupPlayerStats()`
+ * above, which only ever ranks *players*. `claude/
+ * feature-plan-stats-enhancements.md` §A: total Spieltage, total Tore, Ø
+ * Tore/Spiel, Ø Teilnehmer/Termin, and the season's Rot-vs-Grün
+ * wins/draws/losses record (a signal for whether strength-based
+ * auto-balance is actually landing even over time). §B added `records`
+ * (biggest win, closest game, highest-scoring match) in the same pass over
+ * `results` below — no extra queries.
+ *
+ * `seasonId` omitted means all-time (every played fixture ever, no season
+ * filter) — unlike the stats endpoint's `scope=season` fallback-to-active
+ * behavior, this function never resolves an active season on its own; the
+ * caller (the `/stats` endpoint) decides what "no seasonId" means for its
+ * own scope.
+ */
+export async function computeSeasonSummary(
+  payload: Payload,
+  groupId: string | number,
+  seasonId?: string | number,
+): Promise<SeasonSummary> {
+  const { docs: fixtures } = await payload.find({
+    collection: 'fixtures',
+    where: seasonId
+      ? { group: { equals: groupId }, status: { equals: 'played' }, season: { equals: seasonId } }
+      : { group: { equals: groupId }, status: { equals: 'played' } },
+    pagination: false,
+    depth: 0,
+    overrideAccess: true,
+  });
+
+  if (fixtures.length === 0) return EMPTY_SEASON_SUMMARY;
+
+  const fixtureIds = fixtures.map((f) => f.id);
+  const fixtureDateById = new Map(fixtures.map((f) => [String(f.id), typeof f.date === 'string' ? f.date : String(f.date)]));
+  const [{ docs: lineups }, { docs: results }] = await Promise.all([
+    payload.find({
+      collection: 'lineups',
+      where: { fixture: { in: fixtureIds } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+    payload.find({
+      collection: 'matchResults',
+      where: { fixture: { in: fixtureIds } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+  ]);
+
+  if (results.length === 0) return EMPTY_SEASON_SUMMARY;
+
+  const lineupByFixture = new Map(
+    lineups.map((l) => [String(typeof l.fixture === 'object' && l.fixture !== null ? l.fixture.id : l.fixture), l]),
+  );
+
+  let totalGoals = 0;
+  let attendanceSum = 0;
+  let attendanceCount = 0;
+  const red = { wins: 0, draws: 0, losses: 0 };
+  const green = { wins: 0, draws: 0, losses: 0 };
+  let biggestWin: MatchExtreme | null = null;
+  let biggestWinMargin = -1;
+  let closestGame: MatchExtreme | null = null;
+  let closestGameMargin = Infinity;
+  let highestScoring: MatchExtreme | null = null;
+  let highestScoringTotal = -1;
+
+  for (const result of results) {
+    const fixtureId = typeof result.fixture === 'object' && result.fixture !== null ? result.fixture.id : result.fixture;
+    const redScore = typeof result.redScore === 'number' ? result.redScore : 0;
+    const greenScore = typeof result.greenScore === 'number' ? result.greenScore : 0;
+    totalGoals += redScore + greenScore;
+
+    if (redScore > greenScore) {
+      red.wins += 1;
+      green.losses += 1;
+    } else if (greenScore > redScore) {
+      green.wins += 1;
+      red.losses += 1;
+    } else {
+      red.draws += 1;
+      green.draws += 1;
+    }
+
+    const margin = Math.abs(redScore - greenScore);
+    const matchTotal = redScore + greenScore;
+    const extreme: MatchExtreme = {
+      fixtureId: String(fixtureId),
+      date: fixtureDateById.get(String(fixtureId)) ?? '',
+      redScore,
+      greenScore,
+    };
+    if (margin > biggestWinMargin) {
+      biggestWinMargin = margin;
+      biggestWin = extreme;
+    }
+    // "Closest game" excludes draws (margin 0) — a draw isn't a close win,
+    // it's not a win at all.
+    if (margin > 0 && margin < closestGameMargin) {
+      closestGameMargin = margin;
+      closestGame = extreme;
+    }
+    if (matchTotal > highestScoringTotal) {
+      highestScoringTotal = matchTotal;
+      highestScoring = extreme;
+    }
+
+    const lineup = lineupByFixture.get(String(fixtureId));
+    if (lineup) {
+      attendanceSum += polyRefs(lineup.redPlayers).length + polyRefs(lineup.greenPlayers).length;
+      attendanceCount += 1;
+    }
+  }
+
+  const playedCount = results.length;
+  return {
+    playedCount,
+    totalGoals,
+    avgGoalsPerMatch: Math.round((totalGoals / playedCount) * 10) / 10,
+    avgAttendance: attendanceCount > 0 ? Math.round((attendanceSum / attendanceCount) * 10) / 10 : 0,
+    red,
+    green,
+    records: { biggestWin, closestGame, highestScoring },
+  };
+}
+
+export type PlayerMatchHighlight = {
+  playerId: string;
+  playerKind: PolyKind;
+  name: string;
+  fixtureId: string;
+  date: string;
+  goals: number;
+};
+
+export type LongestStreakHighlight = {
+  playerId: string;
+  playerKind: PolyKind;
+  name: string;
+  streak: number;
+};
+
+/** §B: all-time-only "Hall of Fame" — deliberately unscoped by season. */
+export type AllTimeRecords = {
+  topSingleMatchGoals: PlayerMatchHighlight | null;
+  longestWinStreak: LongestStreakHighlight | null;
+};
+
+/** Longest run of consecutive wins anywhere in `matches` (chronological), not just the trailing one — unlike `currentWinStreak()`, which only ever looks at the tail. */
+export function longestWinStreakEver(matches: PlayerMatchRecord[]): number {
+  let best = 0;
+  let current = 0;
+  for (const m of matches) {
+    if (m.outcome === 'win') {
+      current += 1;
+      if (current > best) best = current;
+    } else {
+      current = 0;
+    }
+  }
+  return best;
+}
+
+/**
+ * Pure/sync — deliberately takes `allRows` rather than fetching anything
+ * itself. The caller (the `/stats` endpoint, `scope=alltime`) already has
+ * `computeGroupPlayerStats(payload, groupId)` (no `seasonId`) on hand for
+ * the ranked-list response, and that result already carries every
+ * player's full chronological match list — goals-per-match included —
+ * which is everything both records below need. Folding this in avoids a
+ * second all-time fetch entirely.
+ */
+export function computeAllTimeRecords(allRows: PlayerStatsRow[]): AllTimeRecords {
+  let topSingleMatchGoals: PlayerMatchHighlight | null = null;
+  let longestWinStreak: LongestStreakHighlight | null = null;
+
+  for (const row of allRows) {
+    for (const m of row.matches) {
+      if (m.goals > 0 && (!topSingleMatchGoals || m.goals > topSingleMatchGoals.goals)) {
+        topSingleMatchGoals = {
+          playerId: row.playerId,
+          playerKind: row.playerKind,
+          name: row.name,
+          fixtureId: String(m.fixtureId),
+          date: m.date,
+          goals: m.goals,
+        };
+      }
+    }
+    const streak = longestWinStreakEver(row.matches);
+    if (streak > 0 && (!longestWinStreak || streak > longestWinStreak.streak)) {
+      longestWinStreak = { playerId: row.playerId, playerKind: row.playerKind, name: row.name, streak };
+    }
+  }
+
+  return { topSingleMatchGoals, longestWinStreak };
+}

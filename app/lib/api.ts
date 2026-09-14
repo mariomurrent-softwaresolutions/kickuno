@@ -607,6 +607,35 @@ export type ApiPodiumEntry = {
   valueLabel: string;
 };
 
+export type ApiMatchExtreme = {
+  fixtureId: string;
+  date: string;
+  redScore: number;
+  greenScore: number;
+};
+
+export type ApiPlayerMatchHighlight = {
+  playerId: string;
+  playerKind: ApiPlayerKind;
+  name: string;
+  fixtureId: string;
+  date: string;
+  goals: number;
+};
+
+export type ApiLongestStreakHighlight = {
+  playerId: string;
+  playerKind: ApiPlayerKind;
+  name: string;
+  streak: number;
+};
+
+/** §B: all-time-only "Hall of Fame" — only ever set on `scope === 'alltime'` responses. */
+export type ApiAllTimeRecords = {
+  topSingleMatchGoals: ApiPlayerMatchHighlight | null;
+  longestWinStreak: ApiLongestStreakHighlight | null;
+};
+
 export type ApiStatsResponse = {
   scope: 'season' | 'alltime';
   metric: ApiStatsMetric;
@@ -614,12 +643,54 @@ export type ApiStatsResponse = {
   podium: ApiPodiumEntry[];
   /** Which season the rows/podium reflect — only set when `scope === 'season'` (§A). */
   seasonId?: string;
+  /** Only set when `scope === 'alltime'` (§B) — season-scoped records live on `ApiStatsSummaryResponse` instead. */
+  records?: ApiAllTimeRecords;
 };
 
 /** `seasonId` is only consulted when `scope === 'season'` — omit it to fall back to the group's active season (§A). */
 export function getStats(groupId: string, scope: 'season' | 'alltime', metric: ApiStatsMetric, seasonId?: string) {
   const qs = query({ group: groupId, scope, metric, season: scope === 'season' ? seasonId : undefined });
   return request<ApiStatsResponse>(`/api/stats${qs}`);
+}
+
+/** §B: season-scoped match records — any of the three is `null` when the scope has no played matches. */
+export type ApiSeasonRecords = {
+  biggestWin: ApiMatchExtreme | null;
+  closestGame: ApiMatchExtreme | null;
+  highestScoring: ApiMatchExtreme | null;
+};
+
+export type ApiSeasonSummary = {
+  /** Number of played fixtures (matches with a recorded result) in scope. */
+  playedCount: number;
+  totalGoals: number;
+  /** Rounded to one decimal. 0 when `playedCount` is 0. */
+  avgGoalsPerMatch: number;
+  /** Mean lineup size (red + green) across matches in scope, rounded to one decimal. */
+  avgAttendance: number;
+  red: { wins: number; draws: number; losses: number };
+  green: { wins: number; draws: number; losses: number };
+  records: ApiSeasonRecords;
+};
+
+export type ApiStatsSummaryResponse = {
+  scope: 'summary';
+  summary: ApiSeasonSummary;
+  /** Echoes back the requested season id — undefined means all-time. */
+  seasonId?: string;
+};
+
+/**
+ * Group/season-level overview (`claude/feature-plan-stats-enhancements.md`
+ * §A) — companion to `getStats()` above, which only ever ranks *players*.
+ * `seasonId` omitted means all-time — unlike `getStats`'s `scope=season`,
+ * there is no fallback-to-active-season here; resolve the season id
+ * client-side first (the Statistik screen already does this for
+ * `getStats` via `effectiveSeasonId`) and pass it in explicitly.
+ */
+export function getStatsSummary(groupId: string, seasonId?: string) {
+  const qs = query({ group: groupId, scope: 'summary', season: seasonId });
+  return request<ApiStatsSummaryResponse>(`/api/stats${qs}`);
 }
 
 export type ApiPlayerProfile = {
