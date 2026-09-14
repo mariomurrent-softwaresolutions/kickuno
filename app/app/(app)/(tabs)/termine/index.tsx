@@ -2,85 +2,28 @@ import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
-import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
+import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { FixtureRow } from '@/components/ui/fixture-row';
-import { PlusIcon } from '@/components/ui/icons';
+import { MonthDivider } from '@/components/ui/month-divider';
+import { PlusIcon, ChevronForwardIcon } from '@/components/ui/icons';
 import { useAuth } from '@/lib/auth-context';
 import { useFeatures } from '@/lib/features-context';
+import { fixtureDateParts, groupFixturesByMonth } from '@/lib/fixture-groups';
 import * as api from '@/lib/api';
 import { colors } from '@/theme/tokens';
-
-const WEEKDAYS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
-const MONTHS_LONG = [
-  'Januar',
-  'Februar',
-  'März',
-  'April',
-  'Mai',
-  'Juni',
-  'Juli',
-  'August',
-  'September',
-  'Oktober',
-  'November',
-  'Dezember',
-];
-
-function fixtureDateParts(iso: string) {
-  const d = new Date(iso);
-  return { weekday: WEEKDAYS[d.getUTCDay()], day: String(d.getUTCDate()).padStart(2, '0') };
-}
-
-type FixtureGroup = { key: string; label: string; fixtures: api.ApiFixture[] };
-
-/**
- * Buckets an already-date-sorted fixture list into contiguous per-month
- * runs (a single pass is enough since a sorted list never revisits a
- * month once it's moved past it, in either direction — upcoming ascending,
- * past reversed to descending, both still monotonic). The month label
- * drops the year for the current year and shows it otherwise, since a
- * season spans a calendar-year boundary (§1) and the list can otherwise
- * read as ambiguous around New Year's.
- */
-function groupFixturesByMonth(fixtures: api.ApiFixture[]): FixtureGroup[] {
-  const currentYear = new Date().getUTCFullYear();
-  const groups: FixtureGroup[] = [];
-  for (const fixture of fixtures) {
-    const d = new Date(fixture.date);
-    const year = d.getUTCFullYear();
-    const month = d.getUTCMonth();
-    const key = `${year}-${month}`;
-    const last = groups[groups.length - 1];
-    if (last?.key === key) {
-      last.fixtures.push(fixture);
-    } else {
-      const label = year === currentYear ? MONTHS_LONG[month] : `${MONTHS_LONG[month]} ${year}`;
-      groups.push({ key, label, fixtures: [fixture] });
-    }
-  }
-  return groups;
-}
-
-/**
- * A labeled hairline between two months' worth of fixtures — implements
- * "month as a separator" instead of repeating it on every date tile
- * (`FixtureRow`'s weekday/day tile is unchanged).
- */
-function MonthDivider({ label }: { label: string }) {
-  return (
-    <HStack className="items-center gap-2.5">
-      <Text className="font-body-semibold text-[11px] tracking-[1.5px] uppercase text-muted-soft">{label}</Text>
-      <Box className="h-px flex-1" style={{ backgroundColor: colors.hairline }} />
-    </HStack>
-  );
-}
 
 /**
  * "Termine" tab — upcoming + past fixture lists, "+ Neuen Termin anlegen"
  * entry point (organizer/admin only, since creating a fixture is gated
  * server-side the same way — §3.4/§4.5). Fixtures are grouped under a
  * month divider instead of repeating the month on every date tile.
+ *
+ * Also lists every non-active ("abgeschlossene") season as a tappable
+ * entry — a season stays relevant for browsing its own Termine long after
+ * it's no longer the active one (feature-plan-seasons-and-multigroup.md
+ * §A); tapping one pushes `termine/saison/[seasonId]`, which lists every
+ * fixture recorded under that season regardless of its own status.
  */
 export default function TermineScreen() {
   const { group, membership } = useAuth();
@@ -92,20 +35,32 @@ export default function TermineScreen() {
     queryFn: () => api.listFixtures(group!.id, 'upcoming'),
     enabled: Boolean(group),
   });
-  const past = useQuery({
-    queryKey: ['fixtures', group?.id, 'played'],
-    queryFn: () => api.listFixtures(group!.id, 'played'),
+  const seasons = useQuery({
+    queryKey: ['seasons', group?.id],
+    queryFn: () => api.getSeasons(group!.id),
     enabled: Boolean(group),
+  });
+  const activeSeasonId = seasons.data?.docs.find((s) => s.status === 'active')?.id;
+  // "Gespielt" only ever shows the *active* season's own played fixtures —
+  // a season's own Termine, once it's no longer active, live under
+  // "Vergangene Saisons" -> `termine/saison/[seasonId]` instead, so
+  // showing them here too would just be the same fixtures twice.
+  const past = useQuery({
+    queryKey: ['fixtures', group?.id, 'played', activeSeasonId],
+    queryFn: () => api.listFixtures(group!.id, 'played', activeSeasonId),
+    enabled: Boolean(group && activeSeasonId),
   });
 
   const isRefreshing = upcoming.isFetching || past.isFetching;
   function refresh() {
     upcoming.refetch();
     past.refetch();
+    seasons.refetch();
   }
 
   const upcomingGroups = upcoming.data ? groupFixturesByMonth(upcoming.data.docs) : [];
   const pastGroups = past.data ? groupFixturesByMonth(past.data.docs.slice().reverse()) : [];
+  const pastSeasons = (seasons.data?.docs ?? []).filter((s) => s.status !== 'active');
 
   return (
     <ScrollView
@@ -141,6 +96,7 @@ export default function TermineScreen() {
                         {...fixtureDateParts(fixture.date)}
                         time={fixture.time}
                         hallName={typeof fixture.hall === 'object' ? fixture.hall?.name : undefined}
+                        hasResult={fixture.hasResult ?? false}
                         attendanceLabel={
                           features.rsvp && fixture.rsvpYesCount !== undefined
                             ? `${fixture.rsvpYesCount} Zusagen`
@@ -174,6 +130,7 @@ export default function TermineScreen() {
                         {...fixtureDateParts(fixture.date)}
                         time={fixture.time}
                         hallName={typeof fixture.hall === 'object' ? fixture.hall?.name : undefined}
+                        hasResult={fixture.hasResult ?? false}
                         onPress={() => router.push(`/(app)/(tabs)/termine/${fixture.id}`)}
                       />
                     ))}
@@ -183,10 +140,34 @@ export default function TermineScreen() {
             </VStack>
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              {past.isLoading ? 'Lädt…' : 'Noch keine gespielten Termine.'}
+              {seasons.isLoading || past.isLoading ? 'Lädt…' : 'Noch keine gespielten Termine.'}
             </Text>
           )}
         </VStack>
+
+        {pastSeasons.length > 0 && (
+          <VStack className="gap-3">
+            <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+              Vergangene Saisons
+            </Text>
+            <VStack className="gap-2">
+              {pastSeasons.map((season) => (
+                <Pressable
+                  key={season.id}
+                  onPress={() => router.push(`/(app)/(tabs)/termine/saison/${season.id}`)}
+                  className="active:opacity-80"
+                >
+                  <HStack className="items-center justify-between rounded-[18px] border border-hairline bg-bg-card px-4 py-3.5">
+                    <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
+                      {season.label}
+                    </Text>
+                    <ChevronForwardIcon color={colors.dim} />
+                  </HStack>
+                </Pressable>
+              ))}
+            </VStack>
+          </VStack>
+        )}
       </VStack>
     </ScrollView>
   );

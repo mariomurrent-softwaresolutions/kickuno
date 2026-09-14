@@ -141,6 +141,16 @@ export type ApiFixture = {
   repeatGroupId?: string;
   /** Computed by Fixtures.ts's afterRead hook — not a real stored field. */
   rsvpYesCount?: number;
+  /**
+   * Computed by Fixtures.ts's afterRead hook — not a real stored field.
+   * Whether a `matchResults` row actually exists for this fixture.
+   * Deliberately not the same thing as `status === 'played'`: `status` is
+   * a plain editable field that can be set independently of an actual
+   * result (verified live: `PATCH /api/fixtures/:id { status: 'played' }`
+   * succeeds without ever creating a `matchResults` row), so the
+   * Termine list's "Ergebnis vorhanden" dot needs this instead.
+   */
+  hasResult?: boolean;
 };
 
 export type ApiRsvpSummary = { yesCount: number; myStatus: 'yes' | 'no' | null };
@@ -300,10 +310,11 @@ function query(params: Record<string, string | number | undefined>): string {
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
-export function listFixtures(groupId: string, status?: 'upcoming' | 'played') {
+export function listFixtures(groupId: string, status?: 'upcoming' | 'played', seasonId?: string) {
   const qs = query({
     'where[group][equals]': groupId,
     'where[status][equals]': status,
+    'where[season][equals]': seasonId,
     depth: 1,
     sort: 'date',
     limit: 100,

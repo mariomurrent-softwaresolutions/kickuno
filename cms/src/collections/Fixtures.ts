@@ -67,6 +67,24 @@ export const Fixtures: CollectionConfig = {
         });
         return { ...doc, rsvpYesCount: totalDocs };
       },
+      // Attaches a computed, non-persisted `hasResult` — whether a
+      // `matchResults` row actually exists for this fixture. Deliberately
+      // *not* derived from `status === 'played'`: that field only tells
+      // you what the fixture's own record says, and it's a plain editable
+      // select field with no readOnly guard, so it can drift out of sync
+      // with reality (e.g. an admin toggling it directly from `/admin`,
+      // or — found live, see getting-started.md — a result later deleted
+      // without also reverting the fixture's status). The Termine list's
+      // green "Ergebnis vorhanden" dot needs the actual ground truth, so
+      // it checks the `matchResults` row itself instead.
+      async ({ doc, req }) => {
+        const { totalDocs } = await req.payload.count({
+          collection: 'matchResults',
+          where: { fixture: { equals: doc.id } },
+          overrideAccess: true,
+        });
+        return { ...doc, hasResult: totalDocs > 0 };
+      },
     ],
   },
   endpoints: [
