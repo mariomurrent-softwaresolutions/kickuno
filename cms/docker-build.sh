@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE_NAME="${IMAGE_NAME:-kickuno-cms}"
 IMAGE_TAG="${IMAGE_TAG:-latest}"
-PLATFORM="${PLATFORM:-}"
+PLATFORM="${PLATFORM:-linux/amd64}"
 DOCKERFILE_PATH="${DOCKERFILE_PATH:-$SCRIPT_DIR/Dockerfile}"
 BUILD_CONTEXT="${BUILD_CONTEXT:-$SCRIPT_DIR}"
 FULL_IMAGE_NAME="${IMAGE_NAME}:${IMAGE_TAG}"
