@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload';
 import { customAlphabet } from 'nanoid';
 
 import { membershipGroupIds } from '../access/helpers';
-import { getOrCreateCurrentSeason } from '../lib/season';
+import { getOrCreateCurrentSeason, currentSeasonLabel, setActiveSeason } from '../lib/season';
 
 // No 0/O/1/I — avoids ambiguous invite codes read aloud or typed on a phone.
 const generateInviteCode = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6);
@@ -184,6 +184,89 @@ export const Groups: CollectionConfig = {
           }));
 
         return Response.json({ docs: members }, { status: 200 });
+      },
+    },
+    {
+      // Season-management feature plan §A: admin/organizer creates a new
+      // season for the group. Defaults to making it the active one —
+      // completing whichever season currently holds that status via
+      // `setActiveSeason` — since starting a new season is normally exactly
+      // the "close out the old one, begin the new one" action; pass
+      // `makeActive: false` to add one without switching (e.g. pre-creating
+      // next season's row ahead of time).
+      path: '/:id/seasons',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const groupId = req.routeParams?.id;
+        if (typeof groupId !== 'string' && typeof groupId !== 'number') {
+          return Response.json({ error: 'Invalid group id' }, { status: 400 });
+        }
+
+        const managedGroupIds = await membershipGroupIds(req, { roles: ['admin', 'organizer'] });
+        if (!managedGroupIds.map(String).includes(String(groupId))) {
+          return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        let body: Record<string, unknown> = {};
+        try {
+          body = (await req.json?.()) ?? {};
+        } catch {
+          // no/invalid JSON body — every field below is optional
+        }
+
+        const label = typeof body.label === 'string' && body.label.trim() ? body.label.trim() : currentSeasonLabel();
+        const startDate = typeof body.startDate === 'string' ? body.startDate : undefined;
+        const endDate = typeof body.endDate === 'string' ? body.endDate : undefined;
+        const makeActive = body.makeActive !== false;
+
+        const season = await req.payload.create({
+          collection: 'seasons',
+          data: { group: groupId, label, startDate, endDate, status: 'completed' },
+          overrideAccess: true,
+        });
+
+        if (makeActive) {
+          await setActiveSeason(req.payload, groupId, season.id);
+        }
+
+        const doc = await req.payload.findByID({ collection: 'seasons', id: season.id, depth: 0, overrideAccess: true });
+        return Response.json({ doc }, { status: 201 });
+      },
+    },
+    {
+      // Any group member — lists every season for the group's Statistik
+      // season picker and the admin-only Saisons management screen.
+      path: '/:id/seasons',
+      method: 'get',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const groupId = req.routeParams?.id;
+        if (typeof groupId !== 'string' && typeof groupId !== 'number') {
+          return Response.json({ error: 'Invalid group id' }, { status: 400 });
+        }
+
+        const myGroupIds = await membershipGroupIds(req);
+        if (!myGroupIds.map(String).includes(String(groupId))) {
+          return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        const { docs } = await req.payload.find({
+          collection: 'seasons',
+          where: { group: { equals: groupId } },
+          pagination: false,
+          depth: 0,
+          sort: '-createdAt',
+          overrideAccess: true,
+        });
+
+        return Response.json({ docs }, { status: 200 });
       },
     },
     {

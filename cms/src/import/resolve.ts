@@ -134,10 +134,11 @@ export async function findSeasonByLabel(payload: Payload, groupId: string | numb
 }
 
 /**
- * Finds a season by label, or creates one — never flipped `isCurrent` on an
- * existing season (a historic import should never silently change which
- * season the app currently defaults new fixtures onto); only made current
- * itself if the group has no current season at all yet.
+ * Finds a season by label, or creates one — never flips an existing
+ * season's `status` (a historic import should never silently change which
+ * season the app currently defaults new fixtures onto); a newly created one
+ * is only made `active` itself if the group has no active season at all
+ * yet.
  */
 export async function findOrCreateSeason(
   payload: Payload,
@@ -147,16 +148,16 @@ export async function findOrCreateSeason(
   const existing = await findSeasonByLabel(payload, groupId, label);
   if (existing) return { doc: existing, created: false };
 
-  const currentExists = await payload.find({
+  const activeExists = await payload.find({
     collection: 'seasons',
-    where: { group: { equals: groupId }, isCurrent: { equals: true } },
+    where: { group: { equals: groupId }, status: { equals: 'active' } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
   });
   const doc = await payload.create({
     collection: 'seasons',
-    data: { group: groupId, label: label.trim(), isCurrent: currentExists.docs.length === 0 },
+    data: { group: groupId, label: label.trim(), status: activeExists.docs.length === 0 ? 'active' : 'completed' },
     overrideAccess: true,
   });
   return { doc, created: true };

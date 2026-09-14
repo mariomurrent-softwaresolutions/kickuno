@@ -1,6 +1,6 @@
 import type { Payload } from 'payload';
 
-import { getOrCreateCurrentSeason } from './season';
+import { getActiveSeason } from './season';
 import { computeGroupPlayerStats, last5Form, type PlayerStatsRow } from './stats-query';
 
 /**
@@ -16,9 +16,22 @@ import { computeGroupPlayerStats, last5Form, type PlayerStatsRow } from './stats
  * Only real `users` memberships are ever scored — `legacyPlayers` never has
  * a `memberships` row (§3.7), so those rows are simply absent from
  * `computeGroupPlayerStats`'s `playerKind === 'users'` subset here.
+ *
+ * Uses `getActiveSeason` (never `getOrCreateCurrentSeason`) on purpose: this
+ * runs on every result save, completely independent of which season the
+ * fixture itself belongs to, so it must never have the power to spawn a new
+ * season as a side effect of an otherwise advisory computation — a real bug
+ * found live (season-management feature plan follow-up, 2026-09-14): an
+ * admin who completed the active season and then entered a result for an
+ * old backlog fixture before starting the next season saw a surprise
+ * placeholder season silently appear and get marked active. If there's no
+ * active season right now, there's nothing sensible to compute "current
+ * form" against anyway — skip the recompute entirely and leave whatever
+ * `suggestedStrength`/`strengthSampleSize` values are already there.
  */
 export async function recomputeSuggestedStrength(payload: Payload, groupId: string | number): Promise<void> {
-  const season = await getOrCreateCurrentSeason(payload, groupId);
+  const season = await getActiveSeason(payload, groupId);
+  if (!season) return;
   const rows = await computeGroupPlayerStats(payload, groupId, season.id);
   const rowByUserId = new Map(rows.filter((r) => r.playerKind === 'users').map((r) => [r.playerId, r]));
 

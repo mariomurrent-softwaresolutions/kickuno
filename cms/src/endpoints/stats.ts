@@ -10,9 +10,15 @@ function isMetricKey(value: unknown): value is MetricKey {
 
 /**
  * Root-level (not collection-scoped) endpoint — implementation-plan.md §3.6/
- * §6: `GET /api/stats?group=&scope=season|alltime&metric=`. Statistik screen's
- * only data source: ranked rows + podium for one metric/scope, restricted to
- * groups the caller is a member of.
+ * §6, extended by the season-management feature plan
+ * (`claude/feature-plan-seasons-and-multigroup.md` §A):
+ * `GET /api/stats?group=&scope=season|alltime&metric=&season=`. Statistik
+ * screen's only data source: ranked rows + podium for one metric/scope,
+ * restricted to groups the caller is a member of. `season` is optional and
+ * only consulted when `scope=season` — when omitted, falls back to the
+ * group's currently active season (unchanged pre-feature behavior);
+ * `scope=alltime` already spans every season by design and ignores it
+ * entirely.
  */
 export const statsEndpoint: Endpoint = {
   path: '/stats',
@@ -38,12 +44,30 @@ export const statsEndpoint: Endpoint = {
     const metricParam = req.query?.metric;
     const metric: MetricKey = isMetricKey(metricParam) ? metricParam : 'tore';
 
-    const seasonId =
-      scope === 'season' ? (await getOrCreateCurrentSeason(req.payload, groupId)).id : undefined;
+    let seasonId: string | number | undefined;
+    if (scope === 'season') {
+      const seasonParam = req.query?.season;
+      if (typeof seasonParam === 'string' || typeof seasonParam === 'number') {
+        // An explicit season was requested (the Statistik screen's season
+        // picker) — verify it actually belongs to this group rather than
+        // trusting the client's id outright.
+        const season = await req.payload
+          .findByID({ collection: 'seasons', id: seasonParam, depth: 0, overrideAccess: true })
+          .catch(() => null);
+        const seasonGroupId =
+          season && (typeof season.group === 'object' && season.group !== null ? season.group.id : season.group);
+        if (!season || String(seasonGroupId) !== String(groupId)) {
+          return Response.json({ error: 'Invalid season' }, { status: 400 });
+        }
+        seasonId = season.id;
+      } else {
+        seasonId = (await getOrCreateCurrentSeason(req.payload, groupId)).id;
+      }
+    }
 
     const allRows = await computeGroupPlayerStats(req.payload, groupId, seasonId);
     const { rows, podium } = rankPlayersByMetric(allRows, metric, scope);
 
-    return Response.json({ scope, metric, rows, podium }, { status: 200 });
+    return Response.json({ scope, metric, rows, podium, seasonId }, { status: 200 });
   },
 };

@@ -172,6 +172,26 @@ export default function EinstellungenScreen() {
             </Text>
           </Pressable>
         </VStack>
+
+        <VStack className="gap-2.5">
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Saisons</Text>
+          <Pressable
+            onPress={() => router.push('/(app)/(tabs)/gruppe/saisons')}
+            className="flex-row items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5"
+          >
+            <VStack className="flex-1 gap-0.5 pr-3">
+              <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
+                Saisons verwalten
+              </Text>
+              <Text className="font-body text-muted" style={{ fontSize: 12 }}>
+                Neue Saison starten, eine Saison abschließen oder reaktivieren.
+              </Text>
+            </VStack>
+            <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>
+              ›
+            </Text>
+          </Pressable>
+        </VStack>
       </VStack>
     </ScrollView>
   );

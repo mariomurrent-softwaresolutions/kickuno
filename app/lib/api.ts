@@ -115,6 +115,21 @@ export type ApiHall = {
   note?: string;
 };
 
+/**
+ * Season-management feature plan §A. `status` replaces what used to be a
+ * plain `isCurrent` boolean on the backend — exactly one season per group
+ * holds `'active'` at a time (enforced server-side by `setActiveSeason`,
+ * cms/src/lib/season.ts), the rest are `'completed'`.
+ */
+export type ApiSeason = {
+  id: string;
+  group?: string | ApiGroup;
+  label: string;
+  startDate?: string;
+  endDate?: string;
+  status: 'active' | 'completed';
+};
+
 export type ApiFixture = {
   id: string;
   group: string | ApiGroup;
@@ -235,6 +250,30 @@ export function getGroupMembers(groupId: string, opts?: { role?: 'admin' | 'orga
 
 export function regenerateInviteCode(groupId: string) {
   return request<{ doc: ApiGroup }>(`/api/groups/${groupId}/regenerate-code`, { method: 'POST' });
+}
+
+// --- Seasons (feature plan §A) ---
+
+export function getSeasons(groupId: string) {
+  return request<{ docs: ApiSeason[] }>(`/api/groups/${groupId}/seasons`);
+}
+
+/** Admin/organizer only. Defaults to making the new season active (completing whichever season currently is). */
+export function createSeason(groupId: string, data: { label?: string; startDate?: string; endDate?: string; makeActive?: boolean }) {
+  return request<{ doc: ApiSeason }>(`/api/groups/${groupId}/seasons`, {
+    method: 'POST',
+    body: data,
+  });
+}
+
+/** Admin/organizer only — 400 if the season isn't currently active. Doesn't create a replacement (§A: `getOrCreateCurrentSeason` seeds one lazily if needed). */
+export function completeSeason(seasonId: string) {
+  return request<{ doc: ApiSeason }>(`/api/seasons/${seasonId}/complete`, { method: 'POST' });
+}
+
+/** Admin/organizer only — reopens a completed season, completing whichever one was previously active. */
+export function activateSeason(seasonId: string) {
+  return request<{ doc: ApiSeason }>(`/api/seasons/${seasonId}/activate`, { method: 'POST' });
 }
 
 /** 403 if `group.features.strength` is off (§3.4/§3.6) — organizer/admin only. */
@@ -460,10 +499,13 @@ export type ApiStatsResponse = {
   metric: ApiStatsMetric;
   rows: ApiRankedRow[];
   podium: ApiPodiumEntry[];
+  /** Which season the rows/podium reflect — only set when `scope === 'season'` (§A). */
+  seasonId?: string;
 };
 
-export function getStats(groupId: string, scope: 'season' | 'alltime', metric: ApiStatsMetric) {
-  const qs = query({ group: groupId, scope, metric });
+/** `seasonId` is only consulted when `scope === 'season'` — omit it to fall back to the group's active season (§A). */
+export function getStats(groupId: string, scope: 'season' | 'alltime', metric: ApiStatsMetric, seasonId?: string) {
+  const qs = query({ group: groupId, scope, metric, season: scope === 'season' ? seasonId : undefined });
   return request<ApiStatsResponse>(`/api/stats${qs}`);
 }
 

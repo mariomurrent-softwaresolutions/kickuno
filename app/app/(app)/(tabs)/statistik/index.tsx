@@ -30,16 +30,35 @@ const PODIUM_DISPLAY_ORDER: (1 | 2 | 3)[] = [2, 1, 3];
  * `playerKind` (§3.7, phase 6 — a row can now be a real member or an
  * imported `legacyPlayers` ghost profile) is passed along as a query param
  * so Spielerprofil knows which endpoint/shape to expect.
+ *
+ * Season-management feature plan §A: when `scope === 'season'`, a season
+ * picker (chip row, same visual language as the metric chips below it)
+ * lets a member view any of the group's seasons, not just whichever is
+ * currently active — "statistics for each season and overall statistics"
+ * (the latter is `scope === 'alltime'`, unaffected, already spanning every
+ * season by design).
  */
 export default function StatistikScreen() {
   const { group } = useAuth();
   const [scope, setScope] = useState<'season' | 'alltime'>('season');
   const [metric, setMetric] = useState<ApiStatsMetric>('tore');
+  // `null` means "no explicit choice yet — use whichever season is active".
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+
+  const seasonsQuery = useQuery({
+    queryKey: ['seasons', group?.id],
+    queryFn: () => api.getSeasons(group!.id),
+    enabled: Boolean(group),
+  });
+
+  const seasons = seasonsQuery.data?.docs ?? [];
+  const activeSeason = seasons.find((s) => s.status === 'active') ?? null;
+  const effectiveSeasonId = selectedSeasonId ?? activeSeason?.id;
 
   const statsQuery = useQuery({
-    queryKey: ['stats', group?.id, scope, metric],
-    queryFn: () => api.getStats(group!.id, scope, metric),
-    enabled: Boolean(group),
+    queryKey: ['stats', group?.id, scope, metric, scope === 'season' ? effectiveSeasonId : null],
+    queryFn: () => api.getStats(group!.id, scope, metric, scope === 'season' ? effectiveSeasonId : undefined),
+    enabled: Boolean(group) && (scope === 'alltime' || Boolean(effectiveSeasonId)),
   });
 
   const podiumByRank = new Map((statsQuery.data?.podium ?? []).map((p) => [p.rank, p]));
@@ -52,7 +71,10 @@ export default function StatistikScreen() {
         <RefreshControl
           tintColor={colors.dim}
           refreshing={statsQuery.isFetching}
-          onRefresh={() => statsQuery.refetch()}
+          onRefresh={() => {
+            statsQuery.refetch();
+            seasonsQuery.refetch();
+          }}
         />
       }
     >
@@ -75,6 +97,38 @@ export default function StatistikScreen() {
             );
           })}
         </HStack>
+
+        {scope === 'season' && seasons.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+          >
+            {seasons.map((s) => {
+              const active = s.id === effectiveSeasonId;
+              return (
+                <Pressable
+                  key={s.id}
+                  onPress={() => setSelectedSeasonId(s.id)}
+                  className="rounded-full border px-4 py-2"
+                  style={{
+                    borderColor: active ? colors.green : colors.hairline,
+                    backgroundColor: active ? 'rgba(47,191,110,0.12)' : colors.bgCard,
+                  }}
+                >
+                  <HStack className="items-center gap-1.5">
+                    <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.green : colors.ink }}>
+                      {s.label}
+                    </Text>
+                    {s.status === 'active' ? (
+                      <Box style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.green }} />
+                    ) : null}
+                  </HStack>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
         <ScrollView
           horizontal
