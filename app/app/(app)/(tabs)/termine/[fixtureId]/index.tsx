@@ -23,7 +23,9 @@ const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 
  */
 export default function TerminDetailScreen() {
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
-  const { membership } = useAuth();
+  const { membership, group } = useAuth();
+  const teamOneName = group?.teamOneName ?? 'Rot';
+  const teamTwoName = group?.teamTwoName ?? 'Grün';
   const features = useFeatures();
   const queryClient = useQueryClient();
   const canEdit = membership?.role === 'admin' || membership?.role === 'organizer';
@@ -245,7 +247,7 @@ export default function TerminDetailScreen() {
 
         <VStack className="gap-2.5">
           <Text className="font-body-semibold text-red" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-            Rot
+            {teamOneName}
           </Text>
           <HStack className="flex-wrap gap-2">
             {lineup?.red.length ? (
@@ -269,7 +271,7 @@ export default function TerminDetailScreen() {
 
         <VStack className="gap-2.5">
           <Text className="font-body-semibold text-green" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-            Grün
+            {teamTwoName}
           </Text>
           <HStack className="flex-wrap gap-2">
             {lineup?.green.length ? (
@@ -326,7 +328,7 @@ export default function TerminDetailScreen() {
                         style={{ backgroundColor: 'rgba(226,59,59,0.14)' }}
                       >
                         <Text className="font-body-semibold text-red" style={{ fontSize: 12 }}>
-                          Rot
+                          {teamOneName}
                         </Text>
                       </Pressable>
                       <Pressable
@@ -336,7 +338,7 @@ export default function TerminDetailScreen() {
                         style={{ backgroundColor: 'rgba(47,191,110,0.14)' }}
                       >
                         <Text className="font-body-semibold text-green" style={{ fontSize: 12 }}>
-                          Grün
+                          {teamTwoName}
                         </Text>
                       </Pressable>
                     </HStack>
@@ -386,7 +388,7 @@ export default function TerminDetailScreen() {
                       style={{ backgroundColor: 'rgba(226,59,59,0.14)' }}
                     >
                       <Text className="font-body-semibold text-red" style={{ fontSize: 12 }}>
-                        Rot
+                        {teamOneName}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -396,7 +398,7 @@ export default function TerminDetailScreen() {
                       style={{ backgroundColor: 'rgba(47,191,110,0.14)' }}
                     >
                       <Text className="font-body-semibold text-green" style={{ fontSize: 12 }}>
-                        Grün
+                        {teamTwoName}
                       </Text>
                     </Pressable>
                   </HStack>

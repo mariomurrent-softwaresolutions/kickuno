@@ -7,6 +7,7 @@ import { ScreenHeader } from '@/components/ui/screen-header';
 import { FixtureRow } from '@/components/ui/fixture-row';
 import { MonthDivider } from '@/components/ui/month-divider';
 import { PlusIcon, ChevronForwardIcon } from '@/components/ui/icons';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import { useFeatures } from '@/lib/features-context';
 import { fixtureDateParts, groupFixturesByMonth } from '@/lib/fixture-groups';
@@ -114,9 +115,11 @@ export default function TermineScreen() {
                 </VStack>
               ))}
             </VStack>
+          ) : upcoming.isLoading ? (
+            <Spinner />
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              {upcoming.isLoading ? 'Lädt…' : 'Keine bevorstehenden Termine.'}
+              Keine bevorstehenden Termine.
             </Text>
           )}
         </VStack>
@@ -148,9 +151,11 @@ export default function TermineScreen() {
                 </VStack>
               ))}
             </VStack>
+          ) : seasons.isLoading || past.isLoading ? (
+            <Spinner />
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              {seasons.isLoading || past.isLoading ? 'Lädt…' : 'Noch keine gespielten Termine.'}
+              Noch keine gespielten Termine.
             </Text>
           )}
         </VStack>

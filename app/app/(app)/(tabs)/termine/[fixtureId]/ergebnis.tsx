@@ -26,6 +26,8 @@ export default function ErgebnisScreen() {
   const queryClient = useQueryClient();
 
   const { group } = useAuth();
+  const teamOneName = group?.teamOneName ?? 'Rot';
+  const teamTwoName = group?.teamTwoName ?? 'Grün';
 
   const lineupQuery = useQuery({
     queryKey: ['lineup', fixtureId],
@@ -127,7 +129,7 @@ export default function ErgebnisScreen() {
         />
       }
     >
-      <ScreenHeader eyebrow="ERGEBNIS" title="Rot gegen Grün" onBack={() => router.back()} />
+      <ScreenHeader eyebrow="ERGEBNIS" title={`${teamOneName} gegen ${teamTwoName}`} onBack={() => router.back()} />
 
       <VStack className="gap-6 px-5 pt-4">
         <HStack className="items-center justify-center gap-4 rounded-[22px] border border-hairline bg-bg-card py-6">
@@ -144,13 +146,13 @@ export default function ErgebnisScreen() {
 
         {noPlayers ? (
           <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-            Noch keine Teams eingeteilt — zuerst im Termin-Detail Rot/Grün besetzen.
+            Noch keine Teams eingeteilt — zuerst im Termin-Detail {teamOneName}/{teamTwoName} besetzen.
           </Text>
         ) : (
           <>
             <VStack className="gap-2.5">
               <Text className="font-body-semibold text-red" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-                Rot
+                {teamOneName}
               </Text>
               <VStack className="gap-2">
                 {red.map((p) => (
@@ -166,7 +168,7 @@ export default function ErgebnisScreen() {
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Eigentore Rot
+                    Eigentore {teamOneName}
                   </Text>
                   <Stepper value={redOwnGoals} onChange={setRedOwnGoals} />
                 </HStack>
@@ -175,7 +177,7 @@ export default function ErgebnisScreen() {
 
             <VStack className="gap-2.5">
               <Text className="font-body-semibold text-green" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-                Grün
+                {teamTwoName}
               </Text>
               <VStack className="gap-2">
                 {green.map((p) => (
@@ -191,7 +193,7 @@ export default function ErgebnisScreen() {
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Eigentore Grün
+                    Eigentore {teamTwoName}
                   </Text>
                   <Stepper value={greenOwnGoals} onChange={setGreenOwnGoals} />
                 </HStack>

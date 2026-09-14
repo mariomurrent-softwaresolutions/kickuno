@@ -6,6 +6,7 @@ import * as Haptics from 'expo-haptics';
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { ChevronForwardIcon } from '@/components/ui/icons';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import { useFeatures } from '@/lib/features-context';
 import * as api from '@/lib/api';
@@ -176,10 +177,14 @@ export default function StartScreen() {
             )}
           </Pressable>
         ) : (
-          <Box className="rounded-[22px] border border-hairline bg-bg-card p-5">
-            <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              {upcoming.isLoading ? 'Lädt…' : 'Kein bevorstehender Termin.'}
-            </Text>
+          <Box className="rounded-[22px] border border-hairline bg-bg-card p-5 items-center">
+            {upcoming.isLoading ? (
+              <Spinner />
+            ) : (
+              <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
+                Kein bevorstehender Termin.
+              </Text>
+            )}
           </Box>
         )}
 

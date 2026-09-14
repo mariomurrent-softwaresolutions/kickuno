@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import type { ApiStatsMetric } from '@/lib/api';
@@ -194,9 +195,7 @@ export default function StatistikScreen() {
 
         <VStack className="gap-2">
           {statsQuery.isLoading ? (
-            <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Lädt…
-            </Text>
+            <Spinner />
           ) : statsQuery.data?.rows.length ? (
             statsQuery.data.rows.map((row) => (
               <Pressable

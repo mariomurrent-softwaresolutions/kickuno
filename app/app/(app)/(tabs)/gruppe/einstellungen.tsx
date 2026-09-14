@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
@@ -39,6 +39,35 @@ export default function EinstellungenScreen() {
   const isAdmin = membership?.role === 'admin';
   const [savingDay, setSavingDay] = useState(false);
   const [savingFlag, setSavingFlag] = useState<FlagKey | null>(null);
+  const [teamOneDraft, setTeamOneDraft] = useState('');
+  const [teamTwoDraft, setTeamTwoDraft] = useState('');
+  const [savingTeamNames, setSavingTeamNames] = useState(false);
+
+  // Sync the drafts from the loaded group (and again whenever it refreshes
+  // after a save elsewhere) rather than initializing from a `group` that
+  // may still be `null` on first render.
+  useEffect(() => {
+    if (!group) return;
+    setTeamOneDraft(group.teamOneName ?? 'Rot');
+    setTeamTwoDraft(group.teamTwoName ?? 'Grün');
+  }, [group?.teamOneName, group?.teamTwoName]);
+
+  const teamNamesDirty =
+    Boolean(group) && (teamOneDraft !== (group!.teamOneName ?? 'Rot') || teamTwoDraft !== (group!.teamTwoName ?? 'Grün'));
+
+  async function saveTeamNames() {
+    if (!group || savingTeamNames) return;
+    setSavingTeamNames(true);
+    try {
+      await api.updateGroup(group.id, {
+        teamOneName: teamOneDraft.trim() || 'Rot',
+        teamTwoName: teamTwoDraft.trim() || 'Grün',
+      });
+      await refreshGroup();
+    } finally {
+      setSavingTeamNames(false);
+    }
+  }
 
   async function setDefaultGameDay(day: number) {
     if (!group || savingDay || day === group.defaultGameDay) return;
@@ -151,6 +180,55 @@ export default function EinstellungenScreen() {
               </Pressable>
             );
           })}
+        </VStack>
+
+        <VStack className="gap-2.5">
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Teamnamen</Text>
+          <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
+            Wie die beiden Teams in Termin-Detail und Ergebnis erfassen angezeigt werden — die
+            Zuordnung nach Farbe (Rot/Grün) im Hintergrund bleibt unverändert.
+          </Text>
+          <HStack className="gap-2.5">
+            <VStack className="flex-1 gap-1.5">
+              <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-red">
+                Team 1
+              </Text>
+              <TextInput
+                value={teamOneDraft}
+                onChangeText={setTeamOneDraft}
+                placeholder="Rot"
+                placeholderTextColor={colors.dim}
+                maxLength={24}
+                className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
+                style={{ height: 44, fontSize: 14.5 }}
+              />
+            </VStack>
+            <VStack className="flex-1 gap-1.5">
+              <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-green">
+                Team 2
+              </Text>
+              <TextInput
+                value={teamTwoDraft}
+                onChangeText={setTeamTwoDraft}
+                placeholder="Grün"
+                placeholderTextColor={colors.dim}
+                maxLength={24}
+                className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
+                style={{ height: 44, fontSize: 14.5 }}
+              />
+            </VStack>
+          </HStack>
+          {teamNamesDirty && (
+            <Pressable
+              onPress={saveTeamNames}
+              disabled={savingTeamNames}
+              className="items-center rounded-[12px] bg-green py-2.5"
+            >
+              <Text className="font-body-bold" style={{ fontSize: 13, color: '#07120C' }}>
+                {savingTeamNames ? '…' : 'Speichern'}
+              </Text>
+            </Pressable>
+          )}
         </VStack>
 
         <VStack className="gap-2.5">

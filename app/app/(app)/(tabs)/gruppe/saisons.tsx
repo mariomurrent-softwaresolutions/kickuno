@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
@@ -119,9 +120,7 @@ export default function SaisonsScreen() {
 
         <VStack className="gap-2.5">
           {seasonsQuery.isLoading ? (
-            <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Lädt…
-            </Text>
+            <Spinner />
           ) : seasons.length === 0 ? (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
               Noch keine Saisons angelegt.

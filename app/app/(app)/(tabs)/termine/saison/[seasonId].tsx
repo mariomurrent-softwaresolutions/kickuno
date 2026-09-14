@@ -6,6 +6,7 @@ import { Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { FixtureRow } from '@/components/ui/fixture-row';
 import { MonthDivider } from '@/components/ui/month-divider';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import { fixtureDateParts, groupFixturesByMonth } from '@/lib/fixture-groups';
 import * as api from '@/lib/api';
@@ -74,9 +75,11 @@ export default function SaisonTermineScreen() {
               </VStack>
             ))}
           </VStack>
+        ) : fixturesQuery.isLoading ? (
+          <Spinner />
         ) : (
           <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-            {fixturesQuery.isLoading ? 'Lädt…' : 'Keine Termine in dieser Saison.'}
+            Keine Termine in dieser Saison.
           </Text>
         )}
       </VStack>

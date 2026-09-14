@@ -7,6 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { ChevronForwardIcon } from '@/components/ui/icons';
+import { Spinner } from '@/components/ui/spinner';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import type { ApiMemberRow } from '@/lib/api';
@@ -224,9 +225,7 @@ export default function GruppeScreen() {
 
         <VStack className="gap-2">
           {membersQuery.isLoading ? (
-            <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Lädt…
-            </Text>
+            <Spinner />
           ) : filtered.length === 0 ? (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
               Keine Mitglieder in dieser Ansicht.

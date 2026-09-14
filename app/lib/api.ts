@@ -98,6 +98,18 @@ export type ApiGroup = {
   /** Weekday index (0=Sonntag … 6=Samstag) "Neuer Termin" suggests by default — §4.5. */
   defaultGameDay: number;
   features: ApiGroupFeatures;
+  /**
+   * Custom display names for the two teams (not in the original plan) —
+   * purely cosmetic, shown wherever the app would otherwise print the
+   * literal "Rot"/"Grün". Doesn't rename anything underneath (lineups'
+   * `redPlayers`/`greenPlayers`, `matchResults.redScore`/`greenScore`, or
+   * any `tint="red"|"green"` styling) — those stay keyed by color
+   * regardless of what a group calls its teams. A group created before
+   * this field existed won't have it set, so callers should fall back to
+   * 'Rot'/'Grün'.
+   */
+  teamOneName?: string;
+  teamTwoName?: string;
 };
 
 export type ApiMembership = {
@@ -233,7 +245,7 @@ export function createGroup(name: string) {
  */
 export function updateGroup(
   groupId: string,
-  data: { name?: string; defaultGameDay?: number; features?: ApiGroupFeatures }
+  data: { name?: string; defaultGameDay?: number; features?: ApiGroupFeatures; teamOneName?: string; teamTwoName?: string }
 ) {
   return request<{ doc: ApiGroup; message: string }>(`/api/groups/${groupId}`, {
     method: 'PATCH',

@@ -352,5 +352,17 @@ export const Groups: CollectionConfig = {
         { name: 'strength', type: 'checkbox', defaultValue: true },
       ],
     },
+    // Custom display names for the two teams (not in the original plan) —
+    // purely cosmetic, admin-editable via the existing `PATCH
+    // /api/groups/:id`, same as `name`/`defaultGameDay`/`features` above.
+    // Deliberately doesn't touch anything underneath: `lineups.redPlayers`/
+    // `greenPlayers`, `matchResults.redScore`/`greenScore`, and every
+    // `tint="red"|"green"` in the app stay exactly as they are — those are
+    // the color-coding the whole schema and UI are built around, not a
+    // label. These two fields only change what the app *displays* instead
+    // of the literal "Rot"/"Grün" strings; a group that never sets one
+    // keeps seeing the default.
+    { name: 'teamOneName', type: 'text', maxLength: 24, defaultValue: 'Rot' },
+    { name: 'teamTwoName', type: 'text', maxLength: 24, defaultValue: 'Grün' },
   ],
 };
