@@ -1,7 +1,17 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import * as api from './api';
 import type { ApiGroup, ApiMembership, ApiUser } from './api';
+
+// Payload's default JWT lifetime is 7200s (2h, cms/src/collections/Users.ts
+// doesn't override `tokenExpiration`). Refresh once less than half of that
+// remains rather than waiting until the last minute — a device that's been
+// asleep can wake up well past when a "just in time" refresh would have
+// fired, and by then the token is already expired and unrefreshable.
+const REFRESH_MARGIN_SECONDS = 60 * 60;
+// Belt-and-suspenders re-check even if the app never backgrounds/foregrounds.
+const REFRESH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * `loading`  — checking for a stored token on app start.
@@ -34,6 +44,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [group, setGroup] = useState<ApiGroup | null>(null);
   const [membership, setMembership] = useState<ApiMembership | null>(null);
+  // Guards against overlapping refresh calls (e.g. the interval firing
+  // right as the app comes back to foreground).
+  const refreshing = useRef(false);
 
   async function loadMembership(userId: string) {
     const { docs } = await api.myMemberships(userId);
@@ -49,6 +62,70 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setStatus('ready');
   }
 
+  /** Drops straight to the login screen — used both for a normal logout and for a 401 (dead/expired session) noticed elsewhere. */
+  function forceSignOut() {
+    setUser(null);
+    setGroup(null);
+    setMembership(null);
+    setStatus('signedOut');
+  }
+
+  /**
+   * Renews the session before the JWT actually expires (§ REFRESH_MARGIN_SECONDS
+   * above) via Payload's `/refresh-token`, so a user who keeps the app
+   * around doesn't get silently kicked out mid-session — see
+   * api.ts#refreshToken for why a proactive renewal is needed at all
+   * (Payload's token has a fixed ~2h lifetime and nothing else extends it).
+   */
+  async function maybeRefreshToken() {
+    if (refreshing.current) return;
+    const exp = await api.getTokenExpiry();
+    if (exp == null) return;
+    const secondsLeft = exp - Date.now() / 1000;
+    if (secondsLeft > REFRESH_MARGIN_SECONDS) return;
+    refreshing.current = true;
+    try {
+      const { exp: newExp, refreshedToken } = await api.refreshToken();
+      await api.setSession(refreshedToken, newExp);
+    } catch {
+      // Token was already expired/invalid by the time we got to it (e.g.
+      // the app was asleep for hours) — nothing to renew, so fall back to
+      // a real sign-out instead of leaving a dead session lying around.
+      if (secondsLeft <= 0) {
+        await api.setToken(null);
+        forceSignOut();
+      }
+    } finally {
+      refreshing.current = false;
+    }
+  }
+
+  // Registered once: any request anywhere that comes back 401 (api.ts)
+  // means the session is dead — react the same way a normal logout would,
+  // instead of leaving the UI looking signed-in while every call fails.
+  useEffect(() => {
+    api.setUnauthorizedHandler(forceSignOut);
+    return () => api.setUnauthorizedHandler(null);
+  }, []);
+
+  // Proactive renewal while signed in: a periodic check, plus an immediate
+  // one whenever the app comes back to the foreground (JS timers don't run
+  // while backgrounded, so the interval alone would miss a token that
+  // expired while the phone was asleep in the user's pocket).
+  useEffect(() => {
+    if (status !== 'ready' && status !== 'needsGroup') return;
+    void maybeRefreshToken();
+    const interval = setInterval(() => void maybeRefreshToken(), REFRESH_CHECK_INTERVAL_MS);
+    function onAppStateChange(next: AppStateStatus) {
+      if (next === 'active') void maybeRefreshToken();
+    }
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [status]);
+
   useEffect(() => {
     (async () => {
       const token = await api.getToken();
@@ -57,6 +134,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
       try {
+        await maybeRefreshToken();
         const { user: restoredUser } = await api.me();
         if (!restoredUser) {
           await api.setToken(null);
@@ -73,8 +151,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   async function login(email: string, password: string) {
-    const { user: loggedInUser, token } = await api.login(email, password);
-    await api.setToken(token);
+    const { user: loggedInUser, token, exp } = await api.login(email, password);
+    await api.setSession(token, exp);
     setUser(loggedInUser);
     await loadMembership(loggedInUser.id);
   }
@@ -106,10 +184,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function logout() {
     await api.setToken(null);
-    setUser(null);
-    setGroup(null);
-    setMembership(null);
-    setStatus('signedOut');
+    forceSignOut();
   }
 
   const value = useMemo<AuthState>(

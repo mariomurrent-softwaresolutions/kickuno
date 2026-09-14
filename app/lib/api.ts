@@ -8,6 +8,11 @@ import * as SecureStore from 'expo-secure-store';
  */
 
 const TOKEN_KEY = 'hallenkick.token';
+// Unix seconds the current JWT expires at (Payload's `exp`, from
+// /login or /refresh-token) — stored alongside the token so the app can
+// proactively refresh *before* it expires instead of finding out from a
+// failed request.
+const TOKEN_EXP_KEY = 'hallenkick.token.exp';
 
 function getApiBaseUrl(): string {
   // Set EXPO_PUBLIC_API_URL in app/.env (see app/.env.example) — e.g. your
@@ -32,13 +37,47 @@ export async function getToken(): Promise<string | null> {
   }
 }
 
+/** Unix seconds the stored token expires at, or `null` if unknown/not set. */
+export async function getTokenExpiry(): Promise<number | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(TOKEN_EXP_KEY);
+    return raw ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function setToken(token: string | null): Promise<void> {
   try {
     if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
     else await SecureStore.deleteItemAsync(TOKEN_KEY);
+    if (!token) await SecureStore.deleteItemAsync(TOKEN_EXP_KEY).catch(() => {});
   } catch {
     // SecureStore unavailable (e.g. web) — auth just won't persist a reload.
   }
+}
+
+/** Stores a token together with the `exp` (unix seconds) Payload returned for it — call this instead of `setToken` after /login or /refresh-token. */
+export async function setSession(token: string, exp: number): Promise<void> {
+  await setToken(token);
+  try {
+    await SecureStore.setItemAsync(TOKEN_EXP_KEY, String(exp));
+  } catch {
+    // SecureStore unavailable — refresh scheduling just won't have an exp to work from.
+  }
+}
+
+/**
+ * Called whenever a request comes back 401 (expired/invalid JWT). Every API
+ * call still throws its own `ApiError` for the calling screen to show, but
+ * without this the app had no way to notice the *session itself* is dead —
+ * it just kept showing "Etwas ist schiefgelaufen" on every subsequent
+ * screen instead of dropping back to the login screen. `auth-context.tsx`
+ * registers this once to force a real sign-out.
+ */
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
 }
 
 async function request<T>(
@@ -70,6 +109,15 @@ async function request<T>(
   if (!res.ok) {
     const message =
       data?.errors?.[0]?.message ?? data?.error ?? data?.message ?? `Anfrage fehlgeschlagen (${res.status})`;
+    // A 401 on an authenticated request means the JWT is expired or
+    // otherwise invalid (Payload's default token lifetime is 2h and this
+    // app never renewed it — see refreshToken() below). Clear the dead
+    // token and tell auth-context so it can drop back to signedOut, rather
+    // than leaving the app looking "logged in" while every call fails.
+    if (res.status === 401 && auth) {
+      void setToken(null);
+      unauthorizedHandler?.();
+    }
     throw new ApiError(message, res.status);
   }
 
@@ -177,6 +225,22 @@ export function login(email: string, password: string) {
     method: 'POST',
     body: { email, password },
     auth: false,
+  });
+}
+
+/**
+ * Payload's built-in `POST /api/{collection}/refresh-token` — extends the
+ * current session by minting a fresh JWT (same tokenExpiration, i.e.
+ * another ~2h from now), *without* asking for the password again. Only
+ * works while the current token is still valid — a token that has already
+ * expired comes back 401/403 here too, and the only way back in then is a
+ * real re-login. auth-context.tsx calls this proactively (well before
+ * expiry, and again on app foreground) so a user who keeps the app open
+ * doesn't hit that expired-token dead end at all.
+ */
+export function refreshToken() {
+  return request<{ user: ApiUser; exp: number; refreshedToken: string }>('/api/users/refresh-token', {
+    method: 'POST',
   });
 }
 
