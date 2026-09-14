@@ -673,9 +673,30 @@ export type ApiSeasonSummary = {
   records: ApiSeasonRecords;
 };
 
+export type ApiDuoPlayerRef = {
+  playerId: string;
+  playerKind: ApiPlayerKind;
+  name: string;
+  initials?: string;
+};
+
+/** §C ("Beste Duos") — a pair of players and their shared-team record. */
+export type ApiDuoStanding = {
+  playerA: ApiDuoPlayerRef;
+  playerB: ApiDuoPlayerRef;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  /** Rounded percentage, 0-100. */
+  winRate: number;
+};
+
 export type ApiStatsSummaryResponse = {
   scope: 'summary';
   summary: ApiSeasonSummary;
+  /** §C — top pairs by win rate when sharing a team, same scope as `summary`. Empty when no pair has met the minimum shared-games threshold yet. */
+  bestDuos: ApiDuoStanding[];
   /** Echoes back the requested season id — undefined means all-time. */
   seasonId?: string;
 };

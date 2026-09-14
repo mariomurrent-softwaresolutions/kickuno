@@ -112,7 +112,7 @@ export default function StatistikScreen() {
               Saison-Übersicht
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-              Spieltage, Tore, Rekorde und die Hall of Fame.
+              Spieltage, Tore, Rekorde, beste Duos und die Hall of Fame.
             </Text>
           </VStack>
           <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>

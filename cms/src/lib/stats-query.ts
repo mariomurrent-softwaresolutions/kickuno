@@ -648,3 +648,175 @@ export function computeAllTimeRecords(allRows: PlayerStatsRow[]): AllTimeRecords
 
   return { topSingleMatchGoals, longestWinStreak };
 }
+
+export type DuoPlayerRef = {
+  playerId: string;
+  playerKind: PolyKind;
+  name: string;
+  initials?: string;
+};
+
+export type DuoStanding = {
+  playerA: DuoPlayerRef;
+  playerB: DuoPlayerRef;
+  played: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  /** Rounded percentage, 0-100. */
+  winRate: number;
+};
+
+/**
+ * Below this many shared matches, a pair's win rate is dropped from
+ * `computeBestDuos()`'s results — otherwise a single shared win reads as a
+ * "100%" duo, which is more fluke than fact (§C's own "min-games threshold
+ * to avoid a 1-game 100% fluke dominating the list").
+ */
+const MIN_GAMES_TOGETHER = 3;
+const BEST_DUOS_LIMIT = 3;
+
+/**
+ * §C ("Beste Duos") — the pairs of players who win most often when placed
+ * on the same color together, per `claude/
+ * feature-plan-stats-enhancements.md` §C. Resolves that section's open
+ * question in favor of a group-wide leaderboard (shown on the
+ * Saison-Übersicht screen) rather than a per-player "best teammate" line
+ * on Spielerprofil — an O(players²) pass over each match's teammates,
+ * which is fine at 5-a-side group scale (a few dozen members at most).
+ *
+ * Self-contained fetch (own roster + fixtures/lineups/matchResults) rather
+ * than reusing `computeGroupPlayerStats()`'s output, since that function's
+ * per-player match list doesn't carry *who else* was on the same team —
+ * only the player's own outcome per match, which isn't enough to tally a
+ * pair.
+ */
+export async function computeBestDuos(
+  payload: Payload,
+  groupId: string | number,
+  seasonId?: string | number,
+): Promise<DuoStanding[]> {
+  const [{ docs: memberships }, { docs: legacyPlayers }, { docs: fixtures }] = await Promise.all([
+    payload.find({
+      collection: 'memberships',
+      where: { group: { equals: groupId } },
+      pagination: false,
+      depth: 1,
+      overrideAccess: true,
+    }),
+    payload.find({
+      collection: 'legacyPlayers',
+      where: { group: { equals: groupId } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+    payload.find({
+      collection: 'fixtures',
+      where: seasonId
+        ? { group: { equals: groupId }, status: { equals: 'played' }, season: { equals: seasonId } }
+        : { group: { equals: groupId }, status: { equals: 'played' } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+  ]);
+
+  if (fixtures.length === 0) return [];
+
+  const refByKey = new Map<string, DuoPlayerRef>();
+  for (const m of memberships) {
+    const user = typeof m.user === 'object' && m.user !== null ? m.user : null;
+    if (!user) continue;
+    const k = key(user.id, 'users');
+    if (!refByKey.has(k)) {
+      refByKey.set(k, { playerId: String(user.id), playerKind: 'users', name: user.name, initials: user.initials ?? undefined });
+    }
+  }
+  for (const lp of legacyPlayers) {
+    const k = key(lp.id, 'legacyPlayers');
+    if (!refByKey.has(k)) {
+      refByKey.set(k, { playerId: String(lp.id), playerKind: 'legacyPlayers', name: lp.name, initials: lp.initials ?? undefined });
+    }
+  }
+
+  const fixtureIds = fixtures.map((f) => f.id);
+  const [{ docs: lineups }, { docs: results }] = await Promise.all([
+    payload.find({
+      collection: 'lineups',
+      where: { fixture: { in: fixtureIds } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+    payload.find({
+      collection: 'matchResults',
+      where: { fixture: { in: fixtureIds } },
+      pagination: false,
+      depth: 0,
+      overrideAccess: true,
+    }),
+  ]);
+
+  const lineupByFixture = new Map(
+    lineups.map((l) => [String(typeof l.fixture === 'object' && l.fixture !== null ? l.fixture.id : l.fixture), l]),
+  );
+
+  const tallyByPairKey = new Map<string, { wins: number; draws: number; losses: number }>();
+  const refsByPairKey = new Map<string, [string, string]>();
+
+  function tallyTeamPairs(refs: { id: string | number; kind: PolyKind }[], outcome: MatchOutcome) {
+    const keys = refs.map((r) => key(r.id, r.kind)).filter((k) => refByKey.has(k));
+    for (let i = 0; i < keys.length; i += 1) {
+      for (let j = i + 1; j < keys.length; j += 1) {
+        const sorted = [keys[i], keys[j]].sort() as [string, string];
+        const pairKey = sorted.join('|');
+        let tally = tallyByPairKey.get(pairKey);
+        if (!tally) {
+          tally = { wins: 0, draws: 0, losses: 0 };
+          tallyByPairKey.set(pairKey, tally);
+          refsByPairKey.set(pairKey, sorted);
+        }
+        if (outcome === 'win') tally.wins += 1;
+        else if (outcome === 'draw') tally.draws += 1;
+        else tally.losses += 1;
+      }
+    }
+  }
+
+  for (const result of results) {
+    const fixtureId = typeof result.fixture === 'object' && result.fixture !== null ? result.fixture.id : result.fixture;
+    const lineup = lineupByFixture.get(String(fixtureId));
+    if (!lineup) continue;
+
+    const redScore = typeof result.redScore === 'number' ? result.redScore : 0;
+    const greenScore = typeof result.greenScore === 'number' ? result.greenScore : 0;
+    const redOutcome: MatchOutcome = redScore > greenScore ? 'win' : redScore === greenScore ? 'draw' : 'loss';
+    const greenOutcome: MatchOutcome = greenScore > redScore ? 'win' : greenScore === redScore ? 'draw' : 'loss';
+
+    tallyTeamPairs(polyRefs(lineup.redPlayers), redOutcome);
+    tallyTeamPairs(polyRefs(lineup.greenPlayers), greenOutcome);
+  }
+
+  const standings: DuoStanding[] = [];
+  for (const [pairKey, tally] of tallyByPairKey) {
+    const played = tally.wins + tally.draws + tally.losses;
+    if (played < MIN_GAMES_TOGETHER) continue;
+    const [keyA, keyB] = refsByPairKey.get(pairKey)!;
+    const playerA = refByKey.get(keyA);
+    const playerB = refByKey.get(keyB);
+    if (!playerA || !playerB) continue;
+    standings.push({
+      playerA,
+      playerB,
+      played,
+      wins: tally.wins,
+      draws: tally.draws,
+      losses: tally.losses,
+      winRate: Math.round((tally.wins / played) * 100),
+    });
+  }
+
+  standings.sort((a, b) => b.winRate - a.winRate || b.played - a.played);
+  return standings.slice(0, BEST_DUOS_LIMIT);
+}

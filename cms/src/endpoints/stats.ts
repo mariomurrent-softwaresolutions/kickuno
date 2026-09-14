@@ -4,6 +4,7 @@ import { membershipGroupIds } from '../access/helpers';
 import { getActiveSeason } from '../lib/season';
 import {
   computeAllTimeRecords,
+  computeBestDuos,
   computeGroupPlayerStats,
   computeSeasonSummary,
   rankPlayersByMetric,
@@ -41,6 +42,10 @@ function isMetricKey(value: unknown): value is MetricKey {
  * below, no extra queries. `scope=season` never carries this field;
  * season-scoped records (biggest win, closest game, highest-scoring
  * match) live on the `scope=summary` response instead.
+ *
+ * `scope=summary`'s response also carries `bestDuos` (§C) — the top
+ * player pairs by win rate when sharing a team, scoped the same way as
+ * `summary` itself (a season, or all-time when `season` is omitted).
  */
 export const statsEndpoint: Endpoint = {
   path: '/stats',
@@ -78,8 +83,11 @@ export const statsEndpoint: Endpoint = {
         }
         summarySeasonId = season.id;
       }
-      const summary = await computeSeasonSummary(req.payload, groupId, summarySeasonId);
-      return Response.json({ scope, summary, seasonId: summarySeasonId }, { status: 200 });
+      const [summary, bestDuos] = await Promise.all([
+        computeSeasonSummary(req.payload, groupId, summarySeasonId),
+        computeBestDuos(req.payload, groupId, summarySeasonId),
+      ]);
+      return Response.json({ scope, summary, bestDuos, seasonId: summarySeasonId }, { status: 200 });
     }
 
     const metricParam = req.query?.metric;

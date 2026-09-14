@@ -7,7 +7,7 @@ import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
-import type { ApiAllTimeRecords, ApiMatchExtreme, ApiSeasonSummary } from '@/lib/api';
+import type { ApiAllTimeRecords, ApiDuoStanding, ApiMatchExtreme, ApiSeasonSummary } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
 /**
@@ -26,6 +26,13 @@ import { colors } from '@/theme/tokens';
  * All-Time, or vice versa), and every value needed here (`getStatsSummary`,
  * the all-time `records` on `getStats`) was already scope/season-driven on
  * its own terms before the split.
+ *
+ * "Beste Duos" (§C) joined later — the pairs of players who win most
+ * often when sharing a team, resolving that section's "profile-scoped vs.
+ * group-wide leaderboard" open question in favor of the latter, shown
+ * here rather than on Spielerprofil. It rides along on the same
+ * `getStatsSummary()` response as `SeasonSummaryCard` (`bestDuos` is a
+ * sibling field, scoped identically), so it needed no extra query.
  */
 export default function SaisonUebersichtScreen() {
   const { group } = useAuth();
@@ -116,6 +123,7 @@ export default function SaisonUebersichtScreen() {
         )}
 
         {summaryQuery.data ? <SeasonSummaryCard summary={summaryQuery.data.summary} /> : null}
+        {summaryQuery.data?.bestDuos.length ? <BesteDuosCard duos={summaryQuery.data.bestDuos} /> : null}
         {scope === 'alltime' && allTimeRecordsQuery.data?.records ? (
           <HallOfFameCard records={allTimeRecordsQuery.data.records} />
         ) : null}
@@ -186,6 +194,38 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
       <Text className="font-body text-muted" style={{ fontSize: 10.5 }}>
         {label}
       </Text>
+    </VStack>
+  );
+}
+
+/**
+ * §C ("Beste Duos") — the top player pairs by win rate when sharing a
+ * team. Named plainly rather than "Chemie"/"generelle Statistiken" —
+ * every card on this screen already names what it shows (REKORDE, HALL OF
+ * FAME); this one does too. Not pressable (unlike the Hall of Fame rows)
+ * since a duo doesn't map to a single Spielerprofil to open.
+ */
+function BesteDuosCard({ duos }: { duos: ApiDuoStanding[] }) {
+  return (
+    <VStack className="gap-2.5 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
+      <Text className="font-body-semibold text-muted" style={{ fontSize: 10.5, letterSpacing: 0.4 }}>
+        BESTE DUOS
+      </Text>
+      {duos.map((duo) => (
+        <HStack key={`${duo.playerA.playerId}-${duo.playerB.playerId}`} className="items-center justify-between">
+          <VStack className="flex-1 gap-0.5 pr-3">
+            <Text className="font-body-semibold text-ink" style={{ fontSize: 13 }} numberOfLines={1}>
+              {duo.playerA.name} & {duo.playerB.name}
+            </Text>
+            <Text className="font-body text-muted" style={{ fontSize: 11 }}>
+              {duo.wins}S · {duo.draws}U · {duo.losses}N zusammen
+            </Text>
+          </VStack>
+          <Text className="font-heading text-gold" style={{ fontSize: 20 }}>
+            {duo.winRate}%
+          </Text>
+        </HStack>
+      ))}
     </VStack>
   );
 }
