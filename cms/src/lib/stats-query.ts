@@ -272,55 +272,54 @@ export function last5Form(matches: PlayerMatchRecord[]): ('S' | 'U' | 'N')[] {
     .map((m) => (m.outcome === 'win' ? 'S' : m.outcome === 'draw' ? 'U' : 'N'));
 }
 
-export type MetricKey = 'tore' | 'quote' | 'siege' | 'teilnahmen' | 'diff' | 'streak' | 'mvp' | 'eigen';
-export const METRIC_KEYS: MetricKey[] = ['tore', 'quote', 'siege', 'teilnahmen', 'diff', 'streak', 'mvp', 'eigen'];
+export type MetricKey =
+  | 'tore'
+  | 'quote'
+  | 'siege'
+  | 'niederlagen'
+  | 'niederlagenquote'
+  | 'teilnahmen'
+  | 'diff'
+  | 'streak'
+  | 'mvp'
+  | 'eigen';
+export const METRIC_KEYS: MetricKey[] = [
+  'tore',
+  'quote',
+  'siege',
+  'niederlagen',
+  'niederlagenquote',
+  'teilnahmen',
+  'diff',
+  'streak',
+  'mvp',
+  'eigen',
+];
 
-/**
- * Games-played weight for `quote`'s shrinkage prior below — same threshold
- * `computeBestDuos()` already uses as its min-games floor, reused here as
- * "how many games' worth of the group average to blend in" rather than a
- * hard cutoff, per the 2026-09-16 stats-correctness follow-up.
- */
-const QUOTE_SHRINKAGE_GAMES = 3;
-
-/**
- * Pooled (games-weighted) win rate across every row that's actually played
- * at least once — the "prior" `metricValue`'s `quote` case shrinks toward,
- * so a single lucky win at 1 game doesn't read as a flat 100% and outrank
- * someone with a genuinely strong record over many games. 0 when nobody in
- * scope has played yet.
- */
-function computeGroupMeanWinRate(rows: PlayerStatsRow[]): number {
-  let winsSum = 0;
-  let playedSum = 0;
-  for (const row of rows) {
-    winsSum += row.wins;
-    playedSum += row.played;
-  }
-  return playedSum > 0 ? winsSum / playedSum : 0;
-}
-
-function metricValue(row: PlayerStatsRow, metric: MetricKey, groupMeanWinRate?: number): number {
+function metricValue(row: PlayerStatsRow, metric: MetricKey, groupPlayedGames?: number): number {
   switch (metric) {
     case 'tore':
       return row.goals;
     case 'quote': {
-      // Fixed 2026-09-16: shrunk toward the group's pooled win rate,
-      // weighted by `QUOTE_SHRINKAGE_GAMES` "phantom games" at that group
-      // rate — a player who's played 0 games still shows 0% (there's
-      // nothing to shrink), but from game 1 onward their displayed % pulls
-      // toward the group average in proportion to how few games they've
-      // played, and converges to their real win rate as `played` grows past
-      // `QUOTE_SHRINKAGE_GAMES`. Previously a flat `wins/played`, which let
-      // a 1-game 100% sit at the top of the leaderboard above players with
-      // a real, many-game record.
-      if (row.played === 0) return 0;
-      const prior = groupMeanWinRate ?? row.wins / row.played;
-      const shrunk = (row.wins + QUOTE_SHRINKAGE_GAMES * prior) / (row.played + QUOTE_SHRINKAGE_GAMES);
-      return Math.round(shrunk * 100);
+      // Fixed 2026-09-16 (v5): denominator is the group/season's total
+      // played-fixture count, not the individual player's own `played` —
+      // per explicit request, a player who's only turned up for a fraction
+      // of the group's games shouldn't show the same % as someone who
+      // played (and won) every single one. Falls back to `row.played` only
+      // if a caller genuinely can't supply the count (the `/stats`
+      // endpoint always does).
+      const denom = groupPlayedGames ?? row.played;
+      return denom === 0 ? 0 : Math.round((row.wins / denom) * 100);
     }
     case 'siege':
       return row.wins;
+    case 'niederlagen':
+      return row.losses;
+    case 'niederlagenquote': {
+      // Mirrors `quote` above.
+      const denom = groupPlayedGames ?? row.played;
+      return denom === 0 ? 0 : Math.round((row.losses / denom) * 100);
+    }
     case 'teilnahmen':
       return row.played;
     case 'diff':
@@ -337,7 +336,7 @@ function metricValue(row: PlayerStatsRow, metric: MetricKey, groupMeanWinRate?: 
 }
 
 function metricValueLabel(metric: MetricKey, value: number): string {
-  if (metric === 'quote') return `${value}%`;
+  if (metric === 'quote' || metric === 'niederlagenquote') return `${value}%`;
   if (metric === 'diff') return value > 0 ? `+${value}` : String(value);
   // support.js: streak shows "N×S" for a live win streak, "–" otherwise (a
   // streak of 0 never gets an "×S" suffix — that would misleadingly read
@@ -350,19 +349,23 @@ function metricSub(
   row: PlayerStatsRow,
   metric: MetricKey,
   scope: 'season' | 'alltime',
-  seasonFixtureCount?: number,
+  groupPlayedGames?: number,
 ): string {
   const memberSinceYear = row.memberSince ? new Date(row.memberSince).getUTCFullYear() : undefined;
   switch (metric) {
     case 'tore':
       return `${row.played} Spiele`;
     case 'quote':
-      // Now that the ranked % is shrunk (see `metricValue`'s `quote` case),
-      // it no longer equals a literal `wins/played`, so the sub-label spells
-      // out both raw numbers rather than just the win count.
-      return `${row.wins} von ${row.played} Siege`;
+      // Fixed 2026-09-16 (v5): the denominator here now matches
+      // `metricValue`'s `quote` case (group/season total, not the
+      // player's own `played`), so the sub-label doesn't contradict the %.
+      return `${row.wins} von ${groupPlayedGames ?? row.played} Siege`;
     case 'siege':
       return scope === 'season' ? `${row.wins}S · ${row.draws}U · ${row.losses}N` : `${row.played} Spiele`;
+    case 'niederlagen':
+      return scope === 'season' ? `${row.wins}S · ${row.draws}U · ${row.losses}N` : `${row.played} Spiele`;
+    case 'niederlagenquote':
+      return `${row.losses} von ${groupPlayedGames ?? row.played} Niederlagen`;
     case 'teilnahmen':
       return scope === 'season'
         ? // Fixed 2026-09-16: denominator is now the season's actual count
@@ -372,7 +375,7 @@ function metricSub(
           // `Math.round((p.s.sp / 18) * 100)`. Falling back to 18 only if a
           // caller genuinely can't supply a count (defensive; the `/stats`
           // endpoint always does).
-          `${Math.round((row.played / Math.max(1, seasonFixtureCount ?? 18)) * 100)}% der Termine`
+          `${Math.round((row.played / Math.max(1, groupPlayedGames ?? 18)) * 100)}% der Termine`
         : row.playerKind === 'legacyPlayers'
           ? 'ehemaliges Mitglied'
           : memberSinceYear
@@ -427,11 +430,18 @@ export function rankPlayersByMetric(
   rows: PlayerStatsRow[],
   metric: MetricKey,
   scope: 'season' | 'alltime',
-  /** Season's actual played-fixture count — only meaningful (and only used) for the `teilnahmen` sub-label when `scope === 'season'`. */
-  seasonFixtureCount?: number,
+  /**
+   * The group's total played-fixture count for the requested scope —
+   * that season's played fixtures for `scope: 'season'`, or every played
+   * fixture the group has ever had for `scope: 'alltime'`. Used as the
+   * denominator for `quote`/`niederlagenquote` (fixed 2026-09-16, v5 — a
+   * player's win/loss % is judged against how many games the group has
+   * actually played, not just their own `played` count) and, for
+   * `scope: 'season'` only, for `teilnahmen`'s season sub-label %.
+   */
+  groupPlayedGames?: number,
 ): { rows: RankedRow[]; podium: PodiumEntry[] } {
-  const groupMeanWinRate = metric === 'quote' ? computeGroupMeanWinRate(rows) : undefined;
-  const withValues = rows.map((row) => ({ row, value: metricValue(row, metric, groupMeanWinRate) }));
+  const withValues = rows.map((row) => ({ row, value: metricValue(row, metric, groupPlayedGames) }));
   withValues.sort((a, b) => b.value - a.value);
   const maxValue = Math.max(1, withValues[0]?.value ?? 0);
 
@@ -444,7 +454,7 @@ export function rankPlayersByMetric(
     position: row.position,
     value,
     valueLabel: metricValueLabel(metric, value),
-    sub: metricSub(row, metric, scope, seasonFixtureCount),
+    sub: metricSub(row, metric, scope, groupPlayedGames),
     pct: Math.round((value / maxValue) * 100),
   }));
 

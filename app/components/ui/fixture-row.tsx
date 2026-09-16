@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 import { Box, HStack, Pressable, Text, VStack } from './primitives';
 import { ChevronForwardIcon } from './icons';
 import { colors } from '@/theme/tokens';
@@ -18,6 +20,7 @@ type Props = {
 
 /** Termine list row — implementation-plan.md §4.2/§4.5. */
 export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasResult, resultLabel, onPress }: Props) {
+  const { t } = useTranslation('common');
   return (
     <Pressable onPress={onPress} className="active:opacity-80">
       <HStack className="items-center gap-3 rounded-[18px] border border-hairline bg-bg-card px-4 py-3">
@@ -37,7 +40,7 @@ export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasR
         </VStack>
         <VStack className="flex-1 gap-0.5">
           <Text className="font-body-semibold text-ink" style={{ fontSize: 15 }}>
-            {time} Uhr
+            {time}{t('time.suffix')}
           </Text>
           {hallName ? (
             <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>

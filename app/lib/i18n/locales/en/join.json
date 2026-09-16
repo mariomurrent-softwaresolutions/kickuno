@@ -1,0 +1,23 @@
+{
+  "title": "Almost There",
+  "subtitle": "Join an existing group with your code, or create a new one — you'll automatically become admin.",
+  "mode": {
+    "join": "Join",
+    "create": "New Group"
+  },
+  "field": {
+    "codeLabel": "Group Code",
+    "nameLabel": "Group Name",
+    "codePlaceholder": "e.g. EAST-HALL",
+    "namePlaceholder": "e.g. Thursday Crew"
+  },
+  "errors": {
+    "codeRequired": "Group code is required.",
+    "nameRequired": "Group name is required."
+  },
+  "submit": {
+    "join": "Join",
+    "create": "Create Group"
+  },
+  "logout": "Log Out"
+}

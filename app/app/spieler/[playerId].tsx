@@ -3,16 +3,18 @@ import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { StatTile } from '@/components/ui/stat-tile';
+import { FormPills } from '@/components/ui/form-pills';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import type { ApiPlayerKind } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
-const POSITION_LABELS: Record<string, string> = { tor: 'Tor', abwehr: 'Abwehr', mitte: 'Mitte', sturm: 'Sturm' };
+const POSITION_KEYS: Record<string, 'tor' | 'abwehr' | 'mitte' | 'sturm'> = { tor: 'tor', abwehr: 'abwehr', mitte: 'mitte', sturm: 'sturm' };
 
 // Avatar gradient — presentation-only, seeded by playerId so the same
 // player always gets the same two-color gradient (implementation-plan.md
@@ -31,8 +33,6 @@ function avatarGradient(seed: string): [string, string] {
   return AVATAR_GRADIENTS[hash % AVATAR_GRADIENTS.length];
 }
 
-const FORM_COLORS: Record<'S' | 'U' | 'N', string> = { S: colors.green, U: colors.gold, N: colors.red };
-
 function isPlayerKind(value: string | undefined): value is ApiPlayerKind {
   return value === 'users' || value === 'legacyPlayers';
 }
@@ -47,6 +47,7 @@ function isPlayerKind(value: string | undefined): value is ApiPlayerKind {
  * signed-in user).
  */
 export default function SpielerprofilScreen() {
+  const { t } = useTranslation('spielerprofil');
   const { playerId, kind: kindParam } = useLocalSearchParams<{ playerId: string; kind?: string }>();
   const kind: ApiPlayerKind = isPlayerKind(kindParam) ? kindParam : 'users';
   const { group } = useAuth();
@@ -98,13 +99,13 @@ export default function SpielerprofilScreen() {
         }
       >
         <ScreenHeader
-          eyebrow="SPIELERPROFIL"
-          title={profileQuery.isLoading ? '…' : 'Nicht gefunden'}
+          eyebrow={t('eyebrow')}
+          title={profileQuery.isLoading ? '…' : t('notFound')}
           onBack={() => router.back()}
         />
         {!profileQuery.isLoading && (
           <Text className="font-body text-muted px-5 pt-4" style={{ fontSize: 13.5 }}>
-            Dieser Spieler ist kein Mitglied deiner Gruppe (mehr).
+            {t('notFoundBody')}
           </Text>
         )}
       </ScrollView>
@@ -123,7 +124,7 @@ export default function SpielerprofilScreen() {
         <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <ScreenHeader eyebrow="SPIELERPROFIL" title={profile.player.name} onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={profile.player.name} onBack={() => router.back()} />
       <VStack className="gap-6 px-5 pt-4">
         <HStack className="items-center gap-4">
           <LinearGradient
@@ -145,16 +146,20 @@ export default function SpielerprofilScreen() {
                   style={{ borderWidth: 1, borderColor: colors.hairline, backgroundColor: colors.bgSunken }}
                 >
                   <Text className="font-body-semibold text-dim" style={{ fontSize: 10, letterSpacing: 0.5 }}>
-                    EHEMALIG
+                    {t('legacyBadge')}
                   </Text>
                 </Box>
               ) : null}
             </HStack>
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
               {[
-                profile.player.position ? POSITION_LABELS[profile.player.position] ?? profile.player.position : null,
-                typeof profile.player.strength === 'number' ? `Stärke ${profile.player.strength}` : null,
-                profile.player.memberSinceYear ? `dabei seit ${profile.player.memberSinceYear}` : null,
+                profile.player.position
+                  ? POSITION_KEYS[profile.player.position]
+                    ? t(`positions.${POSITION_KEYS[profile.player.position]}`)
+                    : profile.player.position
+                  : null,
+                typeof profile.player.strength === 'number' ? t('strength', { value: profile.player.strength }) : null,
+                profile.player.memberSinceYear ? t('memberSince', { year: profile.player.memberSinceYear }) : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -168,38 +173,14 @@ export default function SpielerprofilScreen() {
         </HStack>
 
         <VStack className="gap-2">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Form (letzte 5)</Text>
-          <HStack className="gap-2">
-            {profile.form.length ? (
-              profile.form.map((result, index) => (
-                <Box
-                  key={index}
-                  className="items-center justify-center rounded-full"
-                  style={{
-                    width: 30,
-                    height: 30,
-                    backgroundColor: `${FORM_COLORS[result]}22`,
-                    borderWidth: 1,
-                    borderColor: FORM_COLORS[result],
-                  }}
-                >
-                  <Text className="font-body-bold" style={{ fontSize: 12.5, color: FORM_COLORS[result] }}>
-                    {result}
-                  </Text>
-                </Box>
-              ))
-            ) : (
-              <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-                –
-              </Text>
-            )}
-          </HStack>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('form.title')}</Text>
+          <FormPills results={profile.form} emptyLabel="–" />
         </VStack>
 
         <VStack className="gap-2.5">
           <HStack className="items-center justify-between">
             <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
-              Saison {profile.season.label}
+              {t('season.title', { label: profile.season.label })}
             </Text>
           </HStack>
           {seasons.length > 1 ? (
@@ -234,34 +215,34 @@ export default function SpielerprofilScreen() {
             </ScrollView>
           ) : null}
           <HStack className="gap-2.5">
-            <StatTile label="Spiele" value={String(profile.season.played)} />
-            <StatTile label="Tore" value={String(profile.season.goals)} valueColor={colors.gold} />
-            <StatTile label="Siegquote" value={`${profile.season.quote}%`} valueColor={colors.green} />
+            <StatTile label={t('season.played')} value={String(profile.season.played)} />
+            <StatTile label={t('season.goals')} value={String(profile.season.goals)} valueColor={colors.gold} />
+            <StatTile label={t('season.quote')} value={`${profile.season.quote}%`} valueColor={colors.green} />
           </HStack>
           <HStack className="gap-2.5">
             <StatTile
-              label="S / U / N"
+              label={t('season.record')}
               value={`${profile.season.wins} / ${profile.season.draws} / ${profile.season.losses}`}
             />
             <StatTile
-              label="Torverhältnis"
+              label={t('season.goalDiff')}
               value={profile.season.goalDiff > 0 ? `+${profile.season.goalDiff}` : String(profile.season.goalDiff)}
               valueColor={goalDiffColor}
             />
-            {mvpEnabled && <StatTile label="MVP" value={String(profile.season.mvps)} />}
+            {mvpEnabled && <StatTile label={t('season.mvp')} value={String(profile.season.mvps)} />}
           </HStack>
         </VStack>
 
         <VStack className="gap-2.5">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">All-Time</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('allTime.title')}</Text>
           <VStack className="rounded-[16px] border border-hairline bg-bg-card">
             {[
-              { label: 'Spiele gesamt', value: String(profile.allTime.played) },
-              { label: 'Tore gesamt', value: String(profile.allTime.goals) },
-              { label: 'Siege gesamt', value: String(profile.allTime.wins) },
-              { label: 'Siegquote all-time', value: `${profile.allTime.quote}%` },
-              ...(mvpEnabled ? [{ label: 'MVP-Titel', value: String(profile.allTime.mvps) }] : []),
-              { label: 'Eigentore', value: String(profile.allTime.ownGoals) },
+              { label: t('allTime.played'), value: String(profile.allTime.played) },
+              { label: t('allTime.goals'), value: String(profile.allTime.goals) },
+              { label: t('allTime.wins'), value: String(profile.allTime.wins) },
+              { label: t('allTime.quote'), value: `${profile.allTime.quote}%` },
+              ...(mvpEnabled ? [{ label: t('allTime.mvps'), value: String(profile.allTime.mvps) }] : []),
+              { label: t('allTime.ownGoals'), value: String(profile.allTime.ownGoals) },
             ].map((row, index, arr) => (
               <HStack
                 key={row.label}

@@ -1,4 +1,5 @@
 import '@/global.css';
+import '@/lib/i18n';
 import { useEffect } from 'react';
 import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { Stack } from 'expo-router';

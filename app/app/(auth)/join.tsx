@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth-context';
@@ -16,6 +17,8 @@ type Mode = 'join' | 'create';
  * new one (auto-becomes admin — see cms/src/collections/Groups.ts).
  */
 export default function JoinGroupScreen() {
+  const { t } = useTranslation('join');
+  const { t: tCommon } = useTranslation('common');
   const { joinGroup, createGroup, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>('join');
@@ -27,7 +30,7 @@ export default function JoinGroupScreen() {
     if (submitting) return;
     setError(null);
     if (!value.trim()) {
-      setError(mode === 'join' ? 'Gruppen-Code wird benötigt.' : 'Gruppenname wird benötigt.');
+      setError(mode === 'join' ? t('errors.codeRequired') : t('errors.nameRequired'));
       return;
     }
     setSubmitting(true);
@@ -35,7 +38,7 @@ export default function JoinGroupScreen() {
       if (mode === 'join') await joinGroup(value.trim());
       else await createGroup(value.trim());
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+      setError(e instanceof ApiError ? e.message : tCommon('errors.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -62,11 +65,10 @@ export default function JoinGroupScreen() {
         >
           <VStack className="gap-2">
             <Text className="font-heading uppercase text-ink" style={{ fontSize: 36, lineHeight: 36 }}>
-              Fast geschafft
+              {t('title')}
             </Text>
             <Text className="font-body text-muted-soft" style={{ fontSize: 15, lineHeight: 22, maxWidth: 280 }}>
-              Tritt einer bestehenden Gruppe mit eurem Code bei, oder leg eine neue an — du wirst automatisch
-              Admin.
+              {t('subtitle')}
             </Text>
           </VStack>
 
@@ -80,7 +82,7 @@ export default function JoinGroupScreen() {
                   style={{ height: 32, alignItems: 'center', justifyContent: 'center', backgroundColor: mode === m ? colors.bgSunken : 'transparent' }}
                 >
                   <Text className={mode === m ? 'font-body-semibold text-ink' : 'font-body text-dim'} style={{ fontSize: 12.5 }}>
-                    {m === 'join' ? 'Beitreten' : 'Neue Gruppe'}
+                    {m === 'join' ? t('mode.join') : t('mode.create')}
                   </Text>
                 </Pressable>
               ))}
@@ -88,12 +90,12 @@ export default function JoinGroupScreen() {
 
             <VStack className="gap-1.5">
               <Text className="font-body-semibold text-dim" style={{ fontSize: 10, letterSpacing: 2 }}>
-                {(mode === 'join' ? 'Gruppen-Code' : 'Gruppenname').toUpperCase()}
+                {(mode === 'join' ? t('field.codeLabel') : t('field.nameLabel')).toUpperCase()}
               </Text>
               <TextInput
                 value={value}
                 onChangeText={setValue}
-                placeholder={mode === 'join' ? 'z.B. HALLE-OST' : 'z.B. Donnerstagsrunde'}
+                placeholder={mode === 'join' ? t('field.codePlaceholder') : t('field.namePlaceholder')}
                 autoCapitalize={mode === 'join' ? 'characters' : 'words'}
                 placeholderTextColor={colors.dim}
                 className="rounded-[14px] border border-hairline bg-bg-card px-4 font-body-semibold text-ink"
@@ -123,7 +125,7 @@ export default function JoinGroupScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text className="font-body-bold text-white" style={{ fontSize: 17 }}>
-                    {mode === 'join' ? 'Beitreten' : 'Gruppe erstellen'}
+                    {mode === 'join' ? t('submit.join') : t('submit.create')}
                   </Text>
                 )}
               </LinearGradient>
@@ -131,7 +133,7 @@ export default function JoinGroupScreen() {
 
             <Pressable onPress={() => logout()}>
               <Text className="text-center font-body text-dim" style={{ fontSize: 12.5, marginTop: 2 }}>
-                Abmelden
+                {t('logout')}
               </Text>
             </Pressable>
           </VStack>

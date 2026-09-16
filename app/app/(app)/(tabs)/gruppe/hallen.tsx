@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -11,12 +12,16 @@ import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import type { ApiHall } from '@/lib/api';
 import { colors } from '@/theme/tokens';
+import i18n from '@/lib/i18n';
 
 type FormState = { name: string; capacity: string; note: string };
 const EMPTY_FORM: FormState = { name: '', capacity: '', note: '' };
 
 function hallSub(h: ApiHall): string {
-  return [typeof h.capacity === 'number' ? `${h.capacity} Plätze` : null, h.note || null]
+  return [
+    typeof h.capacity === 'number' ? i18n.t('hallen:capacitySuffix', { count: h.capacity }) : null,
+    h.note || null,
+  ]
     .filter(Boolean)
     .join(' · ');
 }
@@ -33,9 +38,11 @@ function hallSub(h: ApiHall): string {
  *
  * Deleting a hall in use is blocked server-side (`Halls.ts`'s
  * `beforeDelete` hook) rather than silently orphaning any fixture that
- * references it — the error message from that hook is shown as-is.
+ * references it — the error message from that hook is shown as-is (stays
+ * German regardless of app language, feature-plan-i18n-localization.md).
  */
 export default function HallenScreen() {
+  const { t } = useTranslation('hallen');
   const { group, membership } = useAuth();
   const isAdmin = membership?.role === 'admin';
   const queryClient = useQueryClient();
@@ -88,7 +95,7 @@ export default function HallenScreen() {
       invalidate();
       setEditingId(null);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   const updateMutation = useMutation({
@@ -98,7 +105,7 @@ export default function HallenScreen() {
       invalidate();
       setEditingId(null);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   const deleteMutation = useMutation({
@@ -107,14 +114,14 @@ export default function HallenScreen() {
       invalidate();
       if (editingId !== 'new') setEditingId(null);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   function save() {
     if (!group) return;
     const name = form.name.trim();
     if (!name) {
-      setError('Name ist erforderlich.');
+      setError(t('errors.nameRequired'));
       return;
     }
     setError(null);
@@ -132,9 +139,9 @@ export default function HallenScreen() {
   if (!isAdmin) {
     return (
       <ScrollView className="flex-1 bg-bg-screen">
-        <ScreenHeader eyebrow="ADMIN" title="Hallen" onBack={() => router.back()} />
+        <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
         <Text className="font-body text-muted px-5 pt-4" style={{ fontSize: 13.5 }}>
-          Nur für Admins.
+          {t('adminOnly')}
         </Text>
       </ScrollView>
     );
@@ -144,11 +151,10 @@ export default function HallenScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="ADMIN" title="Hallen" onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
       <VStack className="gap-5 px-5 pt-4">
         <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-          Die Hallen, aus denen „Neuer Termin" auswählen kann. Kapazität steuert die
-          Zusagen-Anzeige (z.B. „12 / 16 zugesagt").
+          {t('description')}
         </Text>
 
         <VStack className="gap-2.5">
@@ -156,7 +162,7 @@ export default function HallenScreen() {
             <Spinner />
           ) : halls.length === 0 && editingId !== 'new' ? (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Noch keine Hallen angelegt.
+              {t('empty')}
             </Text>
           ) : (
             halls.map((hall) => {
@@ -187,7 +193,7 @@ export default function HallenScreen() {
                         ) : null}
                       </VStack>
                       <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 12.5 }}>
-                        Bearbeiten
+                        {t('edit')}
                       </Text>
                     </Pressable>
                   )}
@@ -208,7 +214,7 @@ export default function HallenScreen() {
             style={{ borderColor: colors.hairline }}
           >
             <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13.5 }}>
-              + Neue Halle
+              {t('addNew')}
             </Text>
           </Pressable>
         )}
@@ -242,14 +248,15 @@ function HallForm({
   deleting?: boolean;
   showDelete: boolean;
 }) {
+  const { t } = useTranslation('hallen');
   return (
     <VStack className="gap-3">
       <VStack className="gap-1.5">
-        <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">Name</Text>
+        <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">{t('form.nameLabel')}</Text>
         <TextInput
           value={form.name}
           onChangeText={(v) => setForm((prev) => ({ ...prev, name: v }))}
-          placeholder="z.B. Halle Ost"
+          placeholder={t('form.namePlaceholder')}
           placeholderTextColor={colors.dim}
           className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
           style={{ height: 44, fontSize: 14.5 }}
@@ -257,11 +264,11 @@ function HallForm({
       </VStack>
       <HStack className="gap-3">
         <VStack className="flex-1 gap-1.5">
-          <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">Kapazität</Text>
+          <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">{t('form.capacityLabel')}</Text>
           <TextInput
             value={form.capacity}
             onChangeText={(v) => setForm((prev) => ({ ...prev, capacity: v.replace(/[^0-9]/g, '') }))}
-            placeholder="16"
+            placeholder={t('form.capacityPlaceholder')}
             placeholderTextColor={colors.dim}
             keyboardType="number-pad"
             className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
@@ -269,11 +276,11 @@ function HallForm({
           />
         </VStack>
         <VStack className="flex-[2] gap-1.5">
-          <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">Notiz</Text>
+          <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">{t('form.noteLabel')}</Text>
           <TextInput
             value={form.note}
             onChangeText={(v) => setForm((prev) => ({ ...prev, note: v }))}
-            placeholder="z.B. Standard · 16 Plätze"
+            placeholder={t('form.notePlaceholder')}
             placeholderTextColor={colors.dim}
             className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
             style={{ height: 44, fontSize: 14.5 }}
@@ -283,7 +290,7 @@ function HallForm({
       <HStack className="items-center justify-between pt-1">
         <Pressable onPress={onCancel} className="px-1 py-1.5">
           <Text className="font-body-semibold text-muted" style={{ fontSize: 13 }}>
-            Abbrechen
+            {t('form.cancel')}
           </Text>
         </Pressable>
         <HStack className="gap-2">
@@ -295,13 +302,13 @@ function HallForm({
               style={{ borderColor: colors.hairline }}
             >
               <Text className="font-body-semibold text-red" style={{ fontSize: 13 }}>
-                {deleting ? '…' : 'Löschen'}
+                {deleting ? '…' : t('form.delete')}
               </Text>
             </Pressable>
           ) : null}
           <Pressable onPress={onSave} disabled={saving} className="rounded-[12px] bg-green px-4 py-2">
             <Text className="font-body-bold" style={{ fontSize: 13, color: '#07120C' }}>
-              {saving ? '…' : 'Speichern'}
+              {saving ? '…' : t('form.save')}
             </Text>
           </Pressable>
         </HStack>

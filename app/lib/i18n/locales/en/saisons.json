@@ -1,0 +1,23 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Seasons",
+  "adminOnly": "Admins and organizers only.",
+  "description": "Exactly one season is active at any time — new fixtures and the \"Season\" statistics attach to it. Starting a new season automatically completes the current one.",
+  "empty": "No seasons added yet.",
+  "status": {
+    "active": "Active season",
+    "completed": "Completed"
+  },
+  "complete": "Complete",
+  "reactivate": "Reactivate",
+  "form": {
+    "labelLabel": "Label",
+    "labelPlaceholder": "e.g. 26/27",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "addNew": "+ Start new season",
+  "errors": {
+    "labelRequired": "Label is required."
+  }
+}

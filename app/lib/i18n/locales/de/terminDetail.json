@@ -1,0 +1,37 @@
+{
+  "eyebrow": "TERMIN",
+  "stats": {
+    "rsvps": "Zusagen",
+    "assigned": "Eingeteilt",
+    "balance": "Balance"
+  },
+  "autoBalance": {
+    "action": "Auto-Aufstellung",
+    "loading": "Balanciert…"
+  },
+  "clearAll": {
+    "action": "Zurücksetzen",
+    "loading": "Leert…"
+  },
+  "unassigned": {
+    "title": "Unverteilt",
+    "emptyRsvp": "Noch keine Zusagen.",
+    "emptyNoRsvp": "Keine Mitglieder in der Gruppe."
+  },
+  "noOneAssigned": "Noch niemand eingeteilt.",
+  "notAttendingAction": "Nicht dabei",
+  "notAttending": {
+    "title": "Nicht dabei",
+    "description": "Zusage/Absage steht noch aus oder wurde abgesagt — wer hier trotzdem eingeteilt wird, gilt danach als zugesagt.",
+    "declined": "Abgesagt",
+    "noResponse": "Keine Antwort"
+  },
+  "result": {
+    "edit": "Ergebnis bearbeiten",
+    "enter": "Ergebnis erfassen"
+  },
+  "error": {
+    "title": "Konnte nicht gespeichert werden",
+    "generic": "Aktion fehlgeschlagen."
+  }
+}

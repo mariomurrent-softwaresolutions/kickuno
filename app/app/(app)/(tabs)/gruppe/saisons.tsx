@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -11,11 +12,13 @@ import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import type { ApiSeason } from '@/lib/api';
 import { colors } from '@/theme/tokens';
+import i18n, { dateFnsLocaleTag } from '@/lib/i18n';
 
-function seasonSub(s: ApiSeason): string {
-  if (!s.startDate && !s.endDate) return s.status === 'active' ? 'Aktive Saison' : 'Abgeschlossen';
-  const from = s.startDate ? new Date(s.startDate).toLocaleDateString('de-AT', { month: '2-digit', year: 'numeric' }) : '?';
-  const to = s.endDate ? new Date(s.endDate).toLocaleDateString('de-AT', { month: '2-digit', year: 'numeric' }) : '?';
+function seasonSub(t: (key: string) => string, s: ApiSeason): string {
+  if (!s.startDate && !s.endDate) return s.status === 'active' ? t('status.active') : t('status.completed');
+  const tag = dateFnsLocaleTag();
+  const from = s.startDate ? new Date(s.startDate).toLocaleDateString(tag, { month: '2-digit', year: 'numeric' }) : '?';
+  const to = s.endDate ? new Date(s.endDate).toLocaleDateString(tag, { month: '2-digit', year: 'numeric' }) : '?';
   return `${from} – ${to}`;
 }
 
@@ -36,6 +39,7 @@ function seasonSub(s: ApiSeason): string {
  * "Reaktivieren" reopens a completed season if a rollover was a mistake.
  */
 export default function SaisonsScreen() {
+  const { t } = useTranslation('saisons');
   const { group, membership } = useAuth();
   const isAdmin = membership?.role === 'admin' || membership?.role === 'organizer';
   const queryClient = useQueryClient();
@@ -64,19 +68,19 @@ export default function SaisonsScreen() {
       setCreating(false);
       setLabel('');
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   const completeMutation = useMutation({
     mutationFn: (seasonId: string) => api.completeSeason(seasonId),
     onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   const activateMutation = useMutation({
     mutationFn: (seasonId: string) => api.activateSeason(seasonId),
     onSuccess: invalidate,
-    onError: (e) => setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.'),
+    onError: (e) => setError(e instanceof ApiError ? e.message : i18n.t('common:errors.generic')),
   });
 
   function startCreate() {
@@ -88,7 +92,7 @@ export default function SaisonsScreen() {
   function save() {
     const trimmed = label.trim();
     if (!trimmed) {
-      setError('Bezeichnung ist erforderlich.');
+      setError(t('errors.labelRequired'));
       return;
     }
     setError(null);
@@ -98,9 +102,9 @@ export default function SaisonsScreen() {
   if (!group || !isAdmin) {
     return (
       <ScrollView className="flex-1 bg-bg-screen">
-        <ScreenHeader eyebrow="ADMIN" title="Saisons" onBack={() => router.back()} />
+        <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
         <Text className="font-body text-muted px-5 pt-4" style={{ fontSize: 13.5 }}>
-          Nur für Admins und Organisatoren.
+          {t('adminOnly')}
         </Text>
       </ScrollView>
     );
@@ -111,11 +115,10 @@ export default function SaisonsScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="ADMIN" title="Saisons" onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
       <VStack className="gap-5 px-5 pt-4">
         <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-          Genau eine Saison ist zu jedem Zeitpunkt aktiv — an ihr hängen neue Termine und die
-          „Saison"-Statistik. Eine neue Saison zu starten schließt die aktuelle automatisch ab.
+          {t('description')}
         </Text>
 
         <VStack className="gap-2.5">
@@ -123,7 +126,7 @@ export default function SaisonsScreen() {
             <Spinner />
           ) : seasons.length === 0 ? (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Noch keine Saisons angelegt.
+              {t('empty')}
             </Text>
           ) : (
             seasons.map((s) => {
@@ -144,7 +147,7 @@ export default function SaisonsScreen() {
                         ) : null}
                       </HStack>
                       <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-                        {seasonSub(s)}
+                        {seasonSub(t, s)}
                       </Text>
                     </VStack>
                   </HStack>
@@ -156,7 +159,7 @@ export default function SaisonsScreen() {
                       style={{ borderColor: colors.hairline }}
                     >
                       <Text className="font-body-semibold text-muted" style={{ fontSize: 12.5 }}>
-                        {completeMutation.isPending ? '…' : 'Abschließen'}
+                        {completeMutation.isPending ? '…' : t('complete')}
                       </Text>
                     </Pressable>
                   ) : (
@@ -167,7 +170,7 @@ export default function SaisonsScreen() {
                       style={{ borderColor: colors.green }}
                     >
                       <Text className="font-body-semibold text-green" style={{ fontSize: 12.5 }}>
-                        {activateMutation.isPending ? '…' : 'Reaktivieren'}
+                        {activateMutation.isPending ? '…' : t('reactivate')}
                       </Text>
                     </Pressable>
                   )}
@@ -181,12 +184,12 @@ export default function SaisonsScreen() {
           <VStack className="gap-3 rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5">
             <VStack className="gap-1.5">
               <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-dim">
-                Bezeichnung
+                {t('form.labelLabel')}
               </Text>
               <TextInput
                 value={label}
                 onChangeText={setLabel}
-                placeholder="z.B. 26/27"
+                placeholder={t('form.labelPlaceholder')}
                 placeholderTextColor={colors.dim}
                 className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 font-body-semibold text-ink"
                 style={{ height: 44, fontSize: 14.5 }}
@@ -195,12 +198,12 @@ export default function SaisonsScreen() {
             <HStack className="items-center justify-between pt-1">
               <Pressable onPress={() => setCreating(false)} className="px-1 py-1.5">
                 <Text className="font-body-semibold text-muted" style={{ fontSize: 13 }}>
-                  Abbrechen
+                  {t('form.cancel')}
                 </Text>
               </Pressable>
               <Pressable onPress={save} disabled={createMutation.isPending} className="rounded-[12px] bg-green px-4 py-2">
                 <Text className="font-body-bold" style={{ fontSize: 13, color: '#07120C' }}>
-                  {createMutation.isPending ? '…' : 'Speichern'}
+                  {createMutation.isPending ? '…' : t('form.save')}
                 </Text>
               </Pressable>
             </HStack>
@@ -212,7 +215,7 @@ export default function SaisonsScreen() {
             style={{ borderColor: colors.hairline }}
           >
             <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13.5 }}>
-              + Neue Saison starten
+              {t('addNew')}
             </Text>
           </Pressable>
         )}

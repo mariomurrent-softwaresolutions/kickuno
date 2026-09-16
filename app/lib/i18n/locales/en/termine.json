@@ -1,0 +1,19 @@
+{
+  "eyebrow": "FIXTURES",
+  "title": "Fixtures",
+  "addNew": "Add new fixture",
+  "upcoming": {
+    "title": "Upcoming",
+    "empty": "No upcoming fixtures.",
+    "attendance": "{{count}} RSVPs"
+  },
+  "past": {
+    "title": "Played",
+    "empty": "No fixtures played yet."
+  },
+  "pastSeasons": "Past Seasons",
+  "season": {
+    "eyebrow": "SEASON",
+    "empty": "No fixtures in this season."
+  }
+}

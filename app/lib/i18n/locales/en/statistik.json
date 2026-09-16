@@ -1,0 +1,25 @@
+{
+  "eyebrow": "STATS",
+  "title": "Standings",
+  "overview": {
+    "title": "Season Overview",
+    "description": "Game days, goals, records, best duos and the Hall of Fame."
+  },
+  "scope": {
+    "season": "Season",
+    "alltime": "All-Time"
+  },
+  "metrics": {
+    "tore": "Goals",
+    "quote": "Win Rate",
+    "siege": "Wins",
+    "niederlagen": "Losses",
+    "niederlagenquote": "Loss Rate",
+    "teilnahmen": "Appearances",
+    "diff": "Goal Difference",
+    "streak": "Streak",
+    "mvp": "MVP",
+    "eigen": "Own Goals"
+  },
+  "empty": "No data yet."
+}

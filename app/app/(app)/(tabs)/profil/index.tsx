@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -9,9 +10,7 @@ import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import { colors } from '@/theme/tokens';
-
-const ROLE_LABELS: Record<string, string> = { admin: 'Admin', organizer: 'Organisator', player: 'Spieler' };
-const POSITION_LABELS: Record<string, string> = { tor: 'Tor', abwehr: 'Abwehr', mitte: 'Mitte', sturm: 'Sturm' };
+import i18n, { SUPPORTED_LANGUAGES, type SupportedLanguage } from '@/lib/i18n';
 
 /**
  * Profil tab — the signed-in user's own account + logout. Not in the
@@ -26,6 +25,7 @@ const POSITION_LABELS: Record<string, string> = { tor: 'Tor', abwehr: 'Abwehr', 
  * signed-in user's own stats, once phase 5 builds that screen out.
  */
 export default function ProfilScreen() {
+  const { t } = useTranslation('profil');
   const { user, group, membership, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -41,7 +41,7 @@ export default function ProfilScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="PROFIL" title={user?.name ?? '…'} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={user?.name ?? '…'} />
       <VStack className="gap-5 px-5 pt-4">
         <VStack className="gap-3 rounded-[18px] border border-hairline bg-bg-card p-4">
           <VStack className="gap-0.5">
@@ -54,21 +54,23 @@ export default function ProfilScreen() {
           </VStack>
           {user?.position ? (
             <Text className="font-body text-muted-soft" style={{ fontSize: 12.5 }}>
-              Position: {POSITION_LABELS[user.position] ?? user.position}
+              {t('position', { position: t(`positions.${user.position}`) })}
             </Text>
           ) : null}
         </VStack>
 
         {group ? (
           <VStack className="gap-2 rounded-[18px] border border-hairline bg-bg-card p-4">
-            <Text className="font-body-semibold text-[10px] tracking-[2px] uppercase text-dim">Gruppe</Text>
+            <Text className="font-body-semibold text-[10px] tracking-[2px] uppercase text-dim">
+              {t('group.eyebrow')}
+            </Text>
             <HStack className="items-center justify-between">
               <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
                 {group.name}
               </Text>
               {membership ? (
                 <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 12 }}>
-                  {ROLE_LABELS[membership.role] ?? membership.role}
+                  {t(`group.roles.${membership.role}`, { defaultValue: membership.role })}
                 </Text>
               ) : null}
             </HStack>
@@ -81,11 +83,13 @@ export default function ProfilScreen() {
             className="flex-row items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5 active:opacity-85"
           >
             <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
-              Mein Spielerprofil
+              {t('myProfileLink')}
             </Text>
             <ChevronForwardIcon color={colors.dim} />
           </Pressable>
         ) : null}
+
+        <LanguageCard />
 
         <ChangePasswordCard />
 
@@ -96,11 +100,73 @@ export default function ProfilScreen() {
           style={{ borderColor: colors.red, backgroundColor: 'rgba(226,59,59,0.10)' }}
         >
           <Text className="font-body-bold text-red" style={{ fontSize: 14.5 }}>
-            {loggingOut ? 'Meldet ab…' : 'Abmelden'}
+            {loggingOut ? t('logout.loading') : t('logout.action')}
           </Text>
         </Pressable>
       </VStack>
     </ScrollView>
+  );
+}
+
+/**
+ * Language picker — feature-plan-i18n-localization.md. Per-user, app-level:
+ * defaults to the phone's language on first login (`resolveDeviceLanguage`
+ * in `lib/i18n`), overridable here at any time, independent of anything
+ * any other member of the same group has chosen. Same instant-apply +
+ * persist pattern as the rest of this app's toggles (e.g. Gruppe/
+ * Einstellungen's weekday chips): the UI updates immediately via
+ * `i18n.changeLanguage`, then the choice is saved to `users.locale` so it
+ * follows the account to a new device — with a rollback to the previous
+ * language if the save itself fails, since a language flip that silently
+ * doesn't stick would be confusing.
+ */
+function LanguageCard() {
+  const { t, i18n: i18nInstance } = useTranslation('common');
+  const { user } = useAuth();
+  const [saving, setSaving] = useState<SupportedLanguage | null>(null);
+  const activeLanguage = i18nInstance.language as SupportedLanguage;
+
+  async function selectLanguage(lang: SupportedLanguage) {
+    if (saving || lang === activeLanguage) return;
+    const previous = activeLanguage;
+    setSaving(lang);
+    try {
+      await i18n.changeLanguage(lang);
+      if (user) await api.updateLocale(user.id, lang);
+    } catch {
+      await i18n.changeLanguage(previous);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <VStack className="gap-2.5 rounded-[18px] border border-hairline bg-bg-card p-4">
+      <Text className="font-body-semibold text-[10px] tracking-[2px] uppercase text-dim">
+        {t('language.label')}
+      </Text>
+      <HStack className="gap-2">
+        {SUPPORTED_LANGUAGES.map((lang) => {
+          const active = lang === activeLanguage;
+          return (
+            <Pressable
+              key={lang}
+              onPress={() => selectLanguage(lang)}
+              disabled={saving != null}
+              className="rounded-full border px-4 py-2"
+              style={{
+                borderColor: active ? colors.green : colors.hairline,
+                backgroundColor: active ? colors.bgSunken : colors.bgCard,
+              }}
+            >
+              <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.green : colors.ink }}>
+                {t(`language.${lang}`)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </HStack>
+    </VStack>
   );
 }
 
@@ -118,6 +184,7 @@ export default function ProfilScreen() {
  * current password, not just a valid session token).
  */
 function ChangePasswordCard() {
+  const { t } = useTranslation('profil');
   const [expanded, setExpanded] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -145,15 +212,15 @@ function ChangePasswordCard() {
     setSuccess(false);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Alle Felder werden benötigt.');
+      setError(t('changePassword.errors.required'));
       return;
     }
     if (newPassword.length < 8) {
-      setError('Neues Passwort muss mindestens 8 Zeichen haben.');
+      setError(t('changePassword.errors.tooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Neue Passwörter stimmen nicht überein.');
+      setError(t('changePassword.errors.mismatch'));
       return;
     }
 
@@ -165,7 +232,10 @@ function ChangePasswordCard() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+      // The server's own message here stays German regardless of app
+      // language (feature-plan-i18n-localization.md: backend is out of
+      // scope) — shown as-is, same as every other server error in the app.
+      setError(e instanceof ApiError ? e.message : t('changePassword.errors.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -175,16 +245,16 @@ function ChangePasswordCard() {
     <VStack className="gap-3 rounded-[18px] border border-hairline bg-bg-card p-4">
       <Pressable onPress={toggle} className="flex-row items-center justify-between active:opacity-80">
         <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
-          Passwort ändern
+          {t('changePassword.title')}
         </Text>
         <ChevronForwardIcon color={colors.dim} />
       </Pressable>
 
       {expanded ? (
         <VStack className="gap-3">
-          <PasswordField label="Aktuelles Passwort" value={currentPassword} onChangeText={setCurrentPassword} />
-          <PasswordField label="Neues Passwort" value={newPassword} onChangeText={setNewPassword} />
-          <PasswordField label="Neues Passwort wiederholen" value={confirmPassword} onChangeText={setConfirmPassword} />
+          <PasswordField label={t('changePassword.currentPassword')} value={currentPassword} onChangeText={setCurrentPassword} />
+          <PasswordField label={t('changePassword.newPassword')} value={newPassword} onChangeText={setNewPassword} />
+          <PasswordField label={t('changePassword.confirmPassword')} value={confirmPassword} onChangeText={setConfirmPassword} />
 
           {error ? (
             <Text className="font-body-semibold text-red" style={{ fontSize: 12.5 }}>
@@ -193,7 +263,7 @@ function ChangePasswordCard() {
           ) : null}
           {success ? (
             <Text className="font-body-semibold text-green" style={{ fontSize: 12.5 }}>
-              Passwort geändert.
+              {t('changePassword.success')}
             </Text>
           ) : null}
 
@@ -204,7 +274,7 @@ function ChangePasswordCard() {
             style={{ backgroundColor: colors.green, opacity: submitting ? 0.7 : 1 }}
           >
             <Text className="font-body-bold text-white" style={{ fontSize: 13.5 }}>
-              {submitting ? 'Speichert…' : 'Speichern'}
+              {submitting ? t('changePassword.saving') : t('changePassword.save')}
             </Text>
           </Pressable>
         </VStack>

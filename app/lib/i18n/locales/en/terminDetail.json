@@ -1,0 +1,37 @@
+{
+  "eyebrow": "FIXTURE",
+  "stats": {
+    "rsvps": "RSVPs",
+    "assigned": "Assigned",
+    "balance": "Balance"
+  },
+  "autoBalance": {
+    "action": "Auto-Balance",
+    "loading": "Balancing…"
+  },
+  "clearAll": {
+    "action": "Reset",
+    "loading": "Clearing…"
+  },
+  "unassigned": {
+    "title": "Unassigned",
+    "emptyRsvp": "No RSVPs yet.",
+    "emptyNoRsvp": "No members in the group."
+  },
+  "noOneAssigned": "No one assigned yet.",
+  "notAttendingAction": "Not attending",
+  "notAttending": {
+    "title": "Not Attending",
+    "description": "RSVP still pending or declined — assigning them here counts as an RSVP after all.",
+    "declined": "Declined",
+    "noResponse": "No response"
+  },
+  "result": {
+    "edit": "Edit Result",
+    "enter": "Enter Result"
+  },
+  "error": {
+    "title": "Couldn't save",
+    "generic": "Action failed."
+  }
+}

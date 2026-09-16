@@ -1,0 +1,21 @@
+{
+  "eyebrow": "ANLEGEN",
+  "title": "Neuer Termin",
+  "date": {
+    "label": "Datum",
+    "showSuggested": "Vorgeschlagene Termine",
+    "showCustom": "Anderes Datum wählen"
+  },
+  "time": {
+    "label": "Uhrzeit"
+  },
+  "hall": {
+    "label": "Halle",
+    "placeholder": "z.B. Halle Ost"
+  },
+  "repeatWeekly": {
+    "title": "Wöchentlich wiederholen",
+    "description": "Legt die nächsten 8 {{weekdayPlural}} an."
+  },
+  "submit": "Termin anlegen"
+}

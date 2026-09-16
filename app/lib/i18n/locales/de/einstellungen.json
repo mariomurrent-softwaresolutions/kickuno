@@ -1,0 +1,42 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Einstellungen",
+  "adminOnly": "Nur für Admins.",
+  "gameDay": {
+    "title": "Standard-Spieltag",
+    "description": "Der Tag, den „Neuer Termin\" standardmäßig vorschlägt — andere Tage lassen sich dort trotzdem jederzeit über „Anderes Datum wählen\" auswählen.",
+    "weekdays": {
+      "mon": "Mo",
+      "tue": "Di",
+      "wed": "Mi",
+      "thu": "Do",
+      "fri": "Fr",
+      "sat": "Sa",
+      "sun": "So"
+    }
+  },
+  "features": {
+    "title": "Funktionen",
+    "rsvp": { "label": "Zusagen (RSVP)", "hint": "Bin dabei / Kann nicht auf dem nächsten Termin." },
+    "autoBalance": { "label": "Auto-Aufstellung", "hint": "Automatische Teamverteilung nach Stärke/Toren." },
+    "strength": { "label": "Stärke", "hint": "Stärke-Wert auf Profilen, Chips und der Balance-Anzeige." },
+    "mvp": { "label": "MVP", "hint": "MVP-Auswahl beim Ergebnis erfassen sowie MVP-Statistik und -Profilwerte. Standardmäßig aus." }
+  },
+  "teamNames": {
+    "title": "Teamnamen",
+    "description": "Wie die beiden Teams in Termin-Detail und Ergebnis erfassen angezeigt werden — die Zuordnung nach Farbe (Rot/Grün) im Hintergrund bleibt unverändert.",
+    "teamOneLabel": "Team 1",
+    "teamTwoLabel": "Team 2",
+    "save": "Speichern"
+  },
+  "halls": {
+    "title": "Hallen",
+    "manage": "Hallen verwalten",
+    "description": "Namen, Kapazität und Notiz der Hallen für „Neuer Termin\" bearbeiten."
+  },
+  "seasons": {
+    "title": "Saisons",
+    "manage": "Saisons verwalten",
+    "description": "Neue Saison starten, eine Saison abschließen oder reaktivieren."
+  }
+}

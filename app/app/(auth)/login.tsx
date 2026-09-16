@@ -3,6 +3,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, TextInpu
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {Image} from "expo-image";
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth-context';
@@ -19,6 +20,8 @@ type Mode = 'login' | 'register';
  * (`(auth)/join.tsx`) once the account exists — see the (auth) layout guard.
  */
 export default function LoginScreen() {
+  const { t } = useTranslation('login');
+  const { t: tCommon } = useTranslation('common');
   const { login, register } = useAuth();
   const insets = useSafeAreaInsets();
   const [iconAsset] = useAssets([require('../../assets/images/icon.png')]);
@@ -34,11 +37,11 @@ export default function LoginScreen() {
     setError(null);
 
     if (!email.trim() || !password) {
-      setError('E-Mail und Passwort werden benötigt.');
+      setError(t('errors.emailPasswordRequired'));
       return;
     }
     if (mode === 'register' && !name.trim()) {
-      setError('Name wird benötigt.');
+      setError(t('errors.nameRequired'));
       return;
     }
 
@@ -52,7 +55,7 @@ export default function LoginScreen() {
       // Navigation happens automatically: the (auth) layout redirects to
       // /join or /(app)/(tabs) once useAuth()'s status updates.
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+      setError(e instanceof ApiError ? e.message : tCommon('errors.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -107,19 +110,19 @@ export default function LoginScreen() {
                 className="font-body text-muted-soft"
                 style={{ fontSize: 15, lineHeight: 22, maxWidth: 270 }}
               >
-                Termine, Aufstellungen und alle Zahlen.
+                {t('tagline')}
               </Text>
             </VStack>
           </VStack>
 
           <VStack className="gap-3">
-            <ModeToggle mode={mode} onChange={(m) => { setMode(m); setError(null); }} />
+            <ModeToggle mode={mode} onChange={(m) => { setMode(m); setError(null); }} t={t} />
 
             {mode === 'register' && (
-              <LabeledInput label="Name" value={name} onChangeText={setName} placeholder="Vor- und Nachname" />
+              <LabeledInput label={t('fields.name.label')} value={name} onChangeText={setName} placeholder={t('fields.name.placeholder')} />
             )}
-            <LabeledInput label="E-Mail" value={email} onChangeText={setEmail} placeholder="du@example.com" autoCapitalize="none" keyboardType="email-address" />
-            <LabeledInput label="Passwort" value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry />
+            <LabeledInput label={t('fields.email.label')} value={email} onChangeText={setEmail} placeholder={t('fields.email.placeholder')} autoCapitalize="none" keyboardType="email-address" />
+            <LabeledInput label={t('fields.password.label')} value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry />
 
             {error && (
               <Text className="font-body-semibold text-red" style={{ fontSize: 13 }}>
@@ -143,7 +146,7 @@ export default function LoginScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text className="font-body-bold text-white" style={{ fontSize: 17 }}>
-                    {mode === 'register' ? 'Konto erstellen' : 'Einsteigen'}
+                    {mode === 'register' ? t('submit.register') : t('submit.login')}
                   </Text>
                 )}
               </LinearGradient>
@@ -152,8 +155,8 @@ export default function LoginScreen() {
             <Pressable onPress={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(null); }}>
               <Text className="text-center font-body text-dim" style={{ fontSize: 12.5, marginTop: 2 }}>
                 {mode === 'register'
-                  ? 'Schon ein Konto? Einloggen.'
-                  : 'Noch kein Konto? Registrieren — den Gruppen-Code brauchst du gleich danach.'}
+                  ? t('switchMode.toLogin')
+                  : t('switchMode.toRegister')}
               </Text>
             </Pressable>
           </VStack>
@@ -163,7 +166,7 @@ export default function LoginScreen() {
   );
 }
 
-function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
+function ModeToggle({ mode, onChange, t }: { mode: Mode; onChange: (m: Mode) => void; t: (key: string) => string }) {
   return (
     <HStack className="gap-1.5 self-start rounded-full border border-hairline bg-bg-card p-1">
       {(['login', 'register'] as const).map((m) => (
@@ -177,7 +180,7 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
             className={mode === m ? 'font-body-semibold text-ink' : 'font-body text-dim'}
             style={{ fontSize: 12.5 }}
           >
-            {m === 'login' ? 'Einloggen' : 'Registrieren'}
+            {m === 'login' ? t('mode.login') : t('mode.register')}
           </Text>
         </Pressable>
       ))}

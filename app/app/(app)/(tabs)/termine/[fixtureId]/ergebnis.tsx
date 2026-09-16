@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -27,6 +28,7 @@ import { colors } from '@/theme/tokens';
  * every own goal to name someone.
  */
 export default function ErgebnisScreen() {
+  const { t } = useTranslation('ergebnis');
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
   const queryClient = useQueryClient();
 
@@ -191,7 +193,7 @@ export default function ErgebnisScreen() {
         <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <ScreenHeader eyebrow="ERGEBNIS" title={`${teamOneName} gegen ${teamTwoName}`} onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('titleVs', { teamOne: teamOneName, teamTwo: teamTwoName })} onBack={() => router.back()} />
 
       <VStack className="gap-6 px-5 pt-4">
         <HStack className="items-center justify-center gap-4 rounded-[22px] border border-hairline bg-bg-card py-6">
@@ -208,7 +210,7 @@ export default function ErgebnisScreen() {
 
         {noPlayers ? (
           <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-            Noch keine Teams eingeteilt — zuerst im Termin-Detail {teamOneName}/{teamTwoName} besetzen.
+            {t('noTeams', { teamOne: teamOneName, teamTwo: teamTwoName })}
           </Text>
         ) : (
           <>
@@ -228,13 +230,13 @@ export default function ErgebnisScreen() {
                     <HStack className="items-center justify-between">
                       <HStack className="items-center gap-2">
                         <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-                          Tore
+                          {t('goals')}
                         </Text>
                         <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
                       </HStack>
                       <HStack className="items-center gap-2">
                         <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-                          Eigentor
+                          {t('ownGoal')}
                         </Text>
                         <Stepper value={ownGoalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerOwnGoals(p.id, v)} />
                       </HStack>
@@ -243,7 +245,7 @@ export default function ErgebnisScreen() {
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Sonstiges Eigentor {teamOneName}
+                    {t('otherOwnGoal', { team: teamOneName })}
                   </Text>
                   <Stepper value={redOwnGoals} onChange={setRedOwnGoals} />
                 </HStack>
@@ -266,13 +268,13 @@ export default function ErgebnisScreen() {
                     <HStack className="items-center justify-between">
                       <HStack className="items-center gap-2">
                         <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-                          Tore
+                          {t('goals')}
                         </Text>
                         <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
                       </HStack>
                       <HStack className="items-center gap-2">
                         <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-                          Eigentor
+                          {t('ownGoal')}
                         </Text>
                         <Stepper value={ownGoalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerOwnGoals(p.id, v)} />
                       </HStack>
@@ -281,7 +283,7 @@ export default function ErgebnisScreen() {
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Sonstiges Eigentor {teamTwoName}
+                    {t('otherOwnGoal', { team: teamTwoName })}
                   </Text>
                   <Stepper value={greenOwnGoals} onChange={setGreenOwnGoals} />
                 </HStack>
@@ -314,7 +316,7 @@ export default function ErgebnisScreen() {
           className="items-center rounded-[16px] bg-green py-4 active:opacity-90"
         >
           <Text className="font-body-bold" style={{ fontSize: 15, color: '#07120C' }}>
-            {saving ? 'Speichert…' : 'Ergebnis speichern'}
+            {saving ? t('save.loading') : t('save.action')}
           </Text>
         </Pressable>
       </VStack>

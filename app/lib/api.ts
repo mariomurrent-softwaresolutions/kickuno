@@ -132,6 +132,13 @@ export type ApiUser = {
   name: string;
   initials?: string;
   position?: 'tor' | 'abwehr' | 'mitte' | 'sturm';
+  /**
+   * The app's own display language (feature-plan-i18n-localization.md) —
+   * purely a client preference, `undefined` until the user picks one on the
+   * Profil tab (the app falls back to the device's language, or German,
+   * until then). Never consulted by the backend itself.
+   */
+  locale?: 'de' | 'en';
 };
 
 /** Which collection a player id refers to — `users` (a real member) or `legacyPlayers` (an imported "ghost" profile, §3.7, phase 6). Every player-shaped id in the app is now paired with one of these. */
@@ -254,6 +261,21 @@ export function register(name: string, email: string, password: string) {
 
 export function me() {
   return request<{ user: ApiUser | null }>('/api/users/me');
+}
+
+/**
+ * Persists the app's display-language choice (Profil tab) to the user's
+ * own account, so it follows them to a new device/reinstall instead of
+ * resetting to the phone's language every login — see
+ * feature-plan-i18n-localization.md. Plain self-update, same
+ * `access.update` rule every other own-profile edit already uses; no
+ * dedicated endpoint needed the way `/change-password` is.
+ */
+export function updateLocale(userId: string, locale: 'de' | 'en') {
+  return request<{ doc: ApiUser; message?: string }>(`/api/users/${userId}`, {
+    method: 'PATCH',
+    body: { locale },
+  });
 }
 
 /**
@@ -570,12 +592,24 @@ export function saveResult(
 
 // --- Stats / player profile (§3.6, §6, phase 5 — §3.7/phase 6 for legacyPlayers rows) ---
 
-export type ApiStatsMetric = 'tore' | 'quote' | 'siege' | 'teilnahmen' | 'diff' | 'streak' | 'mvp' | 'eigen';
+export type ApiStatsMetric =
+  | 'tore'
+  | 'quote'
+  | 'siege'
+  | 'niederlagen'
+  | 'niederlagenquote'
+  | 'teilnahmen'
+  | 'diff'
+  | 'streak'
+  | 'mvp'
+  | 'eigen';
 
 export const STATS_METRICS: { key: ApiStatsMetric; label: string }[] = [
   { key: 'tore', label: 'Tore' },
   { key: 'quote', label: 'Siegquote' },
   { key: 'siege', label: 'Siege' },
+  { key: 'niederlagen', label: 'Niederlagen' },
+  { key: 'niederlagenquote', label: 'Niederlagenquote' },
   { key: 'teilnahmen', label: 'Teilnahmen' },
   { key: 'diff', label: 'Torverhältnis' },
   { key: 'streak', label: 'Serie' },

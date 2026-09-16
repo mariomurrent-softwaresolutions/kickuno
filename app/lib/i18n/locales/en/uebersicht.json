@@ -1,0 +1,32 @@
+{
+  "eyebrow": "STATS",
+  "title": "Overview",
+  "scope": {
+    "season": "Season",
+    "alltime": "All-Time"
+  },
+  "summary": {
+    "playedCount": "Game Days",
+    "totalGoals": "Total Goals",
+    "avgGoalsPerMatch": "Avg Goals/Match",
+    "avgAttendance": "Avg Attendance",
+    "record": "{{wins}}W · {{draws}}D · {{losses}}L",
+    "noMatches": "No fixtures played yet."
+  },
+  "records": {
+    "title": "RECORDS",
+    "biggestWin": "Biggest Win",
+    "closestGame": "Closest Game",
+    "highestScoring": "Highest Scoring"
+  },
+  "duos": {
+    "title": "BEST DUOS",
+    "record": "{{wins}}W · {{draws}}D · {{losses}}L together"
+  },
+  "hallOfFame": {
+    "title": "HALL OF FAME",
+    "topGoals": "Goals in one Match",
+    "longestStreak": "Longest Win Streak",
+    "streakUnit": "×W"
+  }
+}

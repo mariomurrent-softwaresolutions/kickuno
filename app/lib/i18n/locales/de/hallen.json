@@ -1,0 +1,24 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Hallen",
+  "adminOnly": "Nur für Admins.",
+  "description": "Die Hallen, aus denen „Neuer Termin\" auswählen kann. Kapazität steuert die Zusagen-Anzeige (z.B. „12 / 16 zugesagt\").",
+  "empty": "Noch keine Hallen angelegt.",
+  "edit": "Bearbeiten",
+  "addNew": "+ Neue Halle",
+  "capacitySuffix": "{{count}} Plätze",
+  "form": {
+    "nameLabel": "Name",
+    "namePlaceholder": "z.B. Halle Ost",
+    "capacityLabel": "Kapazität",
+    "capacityPlaceholder": "16",
+    "noteLabel": "Notiz",
+    "notePlaceholder": "z.B. Standard · 16 Plätze",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "save": "Speichern"
+  },
+  "errors": {
+    "nameRequired": "Name ist erforderlich."
+  }
+}

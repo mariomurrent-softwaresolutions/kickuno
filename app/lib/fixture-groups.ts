@@ -1,24 +1,15 @@
 import type { ApiFixture } from './api';
+import i18n from './i18n';
 
-export const WEEKDAYS = ['SO', 'MO', 'DI', 'MI', 'DO', 'FR', 'SA'];
-export const MONTHS_LONG = [
-  'Januar',
-  'Februar',
-  'März',
-  'April',
-  'Mai',
-  'Juni',
-  'Juli',
-  'August',
-  'September',
-  'Oktober',
-  'November',
-  'Dezember',
-];
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 export function fixtureDateParts(iso: string) {
   const d = new Date(iso);
-  return { weekday: WEEKDAYS[d.getUTCDay()], day: String(d.getUTCDate()).padStart(2, '0') };
+  return {
+    weekday: i18n.t(`common:weekdaysShort.${WEEKDAY_KEYS[d.getUTCDay()]}`),
+    day: String(d.getUTCDate()).padStart(2, '0'),
+  };
 }
 
 export type FixtureGroup = { key: string; label: string; fixtures: ApiFixture[] };
@@ -47,7 +38,8 @@ export function groupFixturesByMonth(fixtures: ApiFixture[]): FixtureGroup[] {
     if (last?.key === key) {
       last.fixtures.push(fixture);
     } else {
-      const label = year === currentYear ? MONTHS_LONG[month] : `${MONTHS_LONG[month]} ${year}`;
+      const monthLabel = i18n.t(`common:monthsLong.${MONTH_KEYS[month]}`);
+      const label = year === currentYear ? monthLabel : `${monthLabel} ${year}`;
       groups.push({ key, label, fixtures: [fixture] });
     }
   }

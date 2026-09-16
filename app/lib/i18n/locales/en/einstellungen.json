@@ -1,0 +1,42 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Settings",
+  "adminOnly": "Admins only.",
+  "gameDay": {
+    "title": "Default game day",
+    "description": "The day \"New fixture\" suggests by default — other days are still always available there via \"Choose a different date\".",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    }
+  },
+  "features": {
+    "title": "Features",
+    "rsvp": { "label": "RSVP", "hint": "In / Can't make it on the next fixture." },
+    "autoBalance": { "label": "Auto team-balance", "hint": "Automatic team split by strength/goals." },
+    "strength": { "label": "Strength", "hint": "Strength value on profiles, chips, and the balance display." },
+    "mvp": { "label": "MVP", "hint": "MVP pick when recording a result, plus MVP stats and profile values. Off by default." }
+  },
+  "teamNames": {
+    "title": "Team names",
+    "description": "How the two teams are shown on the fixture detail and result screens — the color assignment (red/green) underneath stays unchanged.",
+    "teamOneLabel": "Team 1",
+    "teamTwoLabel": "Team 2",
+    "save": "Save"
+  },
+  "halls": {
+    "title": "Halls",
+    "manage": "Manage halls",
+    "description": "Edit the name, capacity, and note for each hall used by \"New fixture\"."
+  },
+  "seasons": {
+    "title": "Seasons",
+    "manage": "Manage seasons",
+    "description": "Start a new season, or complete or reactivate one."
+  }
+}

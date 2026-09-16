@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -12,8 +13,8 @@ import { useFeatures } from '@/lib/features-context';
 import * as api from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
-const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 
 /**
  * Termin-Detail — team builder (implementation-plan.md §4.5). Auto-balance
@@ -22,6 +23,8 @@ const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 
  * depth, same pattern as the RSVP/feature-flag gates elsewhere).
  */
 export default function TerminDetailScreen() {
+  const { t } = useTranslation('terminDetail');
+  const { t: tCommon } = useTranslation('common');
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
   const { membership, group } = useAuth();
   const teamOneName = group?.teamOneName ?? 'Rot';
@@ -110,8 +113,8 @@ export default function TerminDetailScreen() {
       // feedback, which reads as "the button does nothing." Surfacing the
       // server's own message at least makes a real failure visible instead
       // of silently no-op'ing.
-      const message = err instanceof api.ApiError ? err.message : 'Aktion fehlgeschlagen.';
-      Alert.alert('Konnte nicht gespeichert werden', message);
+      const message = err instanceof api.ApiError ? err.message : t('error.generic');
+      Alert.alert(t('error.title'), message);
     },
     onSuccess: (data) => {
       queryClient.setQueryData(lineupKey, data);
@@ -200,7 +203,7 @@ export default function TerminDetailScreen() {
 
   const fixtureDate = fixture ? new Date(fixture.date) : null;
   const title = fixtureDate
-    ? `${WEEKDAYS[fixtureDate.getUTCDay()]}, ${fixtureDate.getUTCDate()}. ${MONTHS[fixtureDate.getUTCMonth()]}`
+    ? `${tCommon(`weekdaysAbbr.${WEEKDAY_KEYS[fixtureDate.getUTCDay()]}`)}, ${fixtureDate.getUTCDate()}. ${tCommon(`monthsShort.${MONTH_KEYS[fixtureDate.getUTCMonth()]}`)}`
     : '…';
 
   return (
@@ -211,12 +214,12 @@ export default function TerminDetailScreen() {
         <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <ScreenHeader eyebrow="TERMIN" title={title} onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={title} onBack={() => router.back()} />
 
       <VStack className="gap-5 px-5 pt-4">
         {fixture && (
           <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-            {fixture.time} Uhr
+            {fixture.time}{tCommon('time.suffix')}
             {typeof fixture.hall === 'object' && fixture.hall?.name ? ` · ${fixture.hall.name}` : ''}
           </Text>
         )}
@@ -228,11 +231,11 @@ export default function TerminDetailScreen() {
         ) : null}
 
         <HStack className="gap-2.5">
-          <StatTile label="Zusagen" value={String(zusagenCount)} />
-          <StatTile label="Eingeteilt" value={String(eingeteiltCount)} />
+          <StatTile label={t('stats.rsvps')} value={String(zusagenCount)} />
+          <StatTile label={t('stats.assigned')} value={String(eingeteiltCount)} />
           {features.strength && (
             <StatTile
-              label="Balance"
+              label={t('stats.balance')}
               value={balance !== null ? (balance > 0 ? `+${balance}` : String(balance)) : '–'}
               valueColor={balance !== null && Math.abs(balance) <= 1 ? colors.green : colors.gold}
             />
@@ -248,7 +251,7 @@ export default function TerminDetailScreen() {
                 className="flex-1 items-center rounded-[13px] bg-green py-3 active:opacity-90"
               >
                 <Text className="font-body-bold" style={{ fontSize: 13.5, color: '#07120C' }}>
-                  {autoBalancing ? 'Balanciert…' : 'Auto-Aufstellung'}
+                  {autoBalancing ? t('autoBalance.loading') : t('autoBalance.action')}
                 </Text>
               </Pressable>
             )}
@@ -259,7 +262,7 @@ export default function TerminDetailScreen() {
               style={{ borderColor: colors.hairline }}
             >
               <Text className="font-body-semibold text-muted" style={{ fontSize: 13.5 }}>
-                {clearAllMutation.isPending ? 'Leert…' : 'Zurücksetzen'}
+                {clearAllMutation.isPending ? t('clearAll.loading') : t('clearAll.action')}
               </Text>
             </Pressable>
           </HStack>
@@ -283,7 +286,7 @@ export default function TerminDetailScreen() {
               ))
             ) : (
               <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-                Noch niemand eingeteilt.
+                {t('noOneAssigned')}
               </Text>
             )}
           </HStack>
@@ -307,7 +310,7 @@ export default function TerminDetailScreen() {
               ))
             ) : (
               <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-                Noch niemand eingeteilt.
+                {t('noOneAssigned')}
               </Text>
             )}
           </HStack>
@@ -315,7 +318,7 @@ export default function TerminDetailScreen() {
 
         <VStack className="gap-2.5">
           <Text className="font-body-semibold text-dim" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-            Unverteilt
+            {t('unassigned.title')}
           </Text>
           {lineup?.pool.length ? (
             <VStack className="gap-2">
@@ -369,7 +372,7 @@ export default function TerminDetailScreen() {
                           style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
                         >
                           <Text className="font-body-semibold text-muted" style={{ fontSize: 12 }}>
-                            Nicht dabei
+                            {t('notAttendingAction')}
                           </Text>
                         </Pressable>
                       )}
@@ -380,7 +383,7 @@ export default function TerminDetailScreen() {
             </VStack>
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-              {features.rsvp ? 'Noch keine Zusagen.' : 'Keine Mitglieder in der Gruppe.'}
+              {features.rsvp ? t('unassigned.emptyRsvp') : t('unassigned.emptyNoRsvp')}
             </Text>
           )}
         </VStack>
@@ -388,10 +391,10 @@ export default function TerminDetailScreen() {
         {canEdit && Boolean(lineup?.notAttending?.length) && (
           <VStack className="gap-2.5">
             <Text className="font-body-semibold text-dim" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-              Nicht dabei
+              {t('notAttending.title')}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-              Zusage/Absage steht noch aus oder wurde abgesagt — wer hier trotzdem eingeteilt wird, gilt danach als zugesagt.
+              {t('notAttending.description')}
             </Text>
             <VStack className="gap-2">
               {(lineup?.notAttending ?? []).map((p) => (
@@ -409,7 +412,7 @@ export default function TerminDetailScreen() {
                       </Text>
                     ) : null}
                     <Text className="font-body text-muted-soft" style={{ fontSize: 11.5 }}>
-                      {p.rsvpStatus === 'no' ? 'Abgesagt' : 'Keine Antwort'}
+                      {p.rsvpStatus === 'no' ? t('notAttending.declined') : t('notAttending.noResponse')}
                     </Text>
                   </HStack>
                   <HStack className="gap-2">
@@ -445,7 +448,7 @@ export default function TerminDetailScreen() {
           className="items-center rounded-[16px] border border-hairline bg-bg-card py-4 active:opacity-85"
         >
           <Text className="font-body-bold text-ink" style={{ fontSize: 14.5 }}>
-            {hasResult ? 'Ergebnis bearbeiten' : 'Ergebnis erfassen'}
+            {hasResult ? t('result.edit') : t('result.enter')}
           </Text>
         </Pressable>
       </VStack>

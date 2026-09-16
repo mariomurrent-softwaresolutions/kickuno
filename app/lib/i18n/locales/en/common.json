@@ -1,0 +1,85 @@
+{
+  "language": {
+    "label": "Language",
+    "de": "German",
+    "en": "English"
+  },
+  "errors": {
+    "generic": "Something went wrong."
+  },
+  "weekdaysLong": {
+    "sun": "Sunday",
+    "mon": "Monday",
+    "tue": "Tuesday",
+    "wed": "Wednesday",
+    "thu": "Thursday",
+    "fri": "Friday",
+    "sat": "Saturday"
+  },
+  "monthsShort": {
+    "jan": "Jan",
+    "feb": "Feb",
+    "mar": "Mar",
+    "apr": "Apr",
+    "may": "May",
+    "jun": "Jun",
+    "jul": "Jul",
+    "aug": "Aug",
+    "sep": "Sep",
+    "oct": "Oct",
+    "nov": "Nov",
+    "dec": "Dec"
+  },
+  "tabs": {
+    "start": "Home",
+    "termine": "Fixtures",
+    "statistik": "Stats",
+    "gruppe": "Group",
+    "profil": "Profile"
+  },
+  "time": {
+    "suffix": ""
+  },
+  "weekdaysShort": {
+    "sun": "SU",
+    "mon": "MO",
+    "tue": "TU",
+    "wed": "WE",
+    "thu": "TH",
+    "fri": "FR",
+    "sat": "SA"
+  },
+  "monthsLong": {
+    "jan": "January",
+    "feb": "February",
+    "mar": "March",
+    "apr": "April",
+    "may": "May",
+    "jun": "June",
+    "jul": "July",
+    "aug": "August",
+    "sep": "September",
+    "oct": "October",
+    "nov": "November",
+    "dec": "December"
+  },
+  "weekdaysAbbr": {
+    "sun": "Su",
+    "mon": "Mo",
+    "tue": "Tu",
+    "wed": "We",
+    "thu": "Th",
+    "fri": "Fr",
+    "sat": "Sa"
+  },
+  "weekdayPlural": {
+    "sun": "Sundays",
+    "mon": "Mondays",
+    "tue": "Tuesdays",
+    "wed": "Wednesdays",
+    "thu": "Thursdays",
+    "fri": "Fridays",
+    "sat": "Saturdays"
+  },
+  "seeAll": "See all"
+}

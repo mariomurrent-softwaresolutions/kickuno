@@ -1,0 +1,23 @@
+{
+  "title": "Fast geschafft",
+  "subtitle": "Tritt einer bestehenden Gruppe mit eurem Code bei, oder leg eine neue an — du wirst automatisch Admin.",
+  "mode": {
+    "join": "Beitreten",
+    "create": "Neue Gruppe"
+  },
+  "field": {
+    "codeLabel": "Gruppen-Code",
+    "nameLabel": "Gruppenname",
+    "codePlaceholder": "z.B. HALLE-OST",
+    "namePlaceholder": "z.B. Donnerstagsrunde"
+  },
+  "errors": {
+    "codeRequired": "Gruppen-Code wird benötigt.",
+    "nameRequired": "Gruppenname wird benötigt."
+  },
+  "submit": {
+    "join": "Beitreten",
+    "create": "Gruppe erstellen"
+  },
+  "logout": "Abmelden"
+}

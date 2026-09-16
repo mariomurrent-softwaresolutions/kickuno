@@ -1,0 +1,35 @@
+{
+  "eyebrow": "PLAYER PROFILE",
+  "notFound": "Not Found",
+  "notFoundBody": "This player is no longer a member of your group.",
+  "legacyBadge": "FORMER",
+  "positions": {
+    "tor": "Goalkeeper",
+    "abwehr": "Defense",
+    "mitte": "Midfield",
+    "sturm": "Forward"
+  },
+  "strength": "Strength {{value}}",
+  "memberSince": "member since {{year}}",
+  "form": {
+    "title": "Form (last 5)"
+  },
+  "season": {
+    "title": "Season {{label}}",
+    "played": "Played",
+    "goals": "Goals",
+    "quote": "Win Rate",
+    "record": "W / D / L",
+    "goalDiff": "Goal Difference",
+    "mvp": "MVP"
+  },
+  "allTime": {
+    "title": "All-Time",
+    "played": "Total Played",
+    "goals": "Total Goals",
+    "wins": "Total Wins",
+    "quote": "All-Time Win Rate",
+    "mvps": "MVP Titles",
+    "ownGoals": "Own Goals"
+  }
+}

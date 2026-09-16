@@ -1,0 +1,25 @@
+{
+  "eyebrow": "STATISTIK",
+  "title": "Rangliste",
+  "overview": {
+    "title": "Saison-Übersicht",
+    "description": "Spieltage, Tore, Rekorde, beste Duos und die Hall of Fame."
+  },
+  "scope": {
+    "season": "Saison",
+    "alltime": "All-Time"
+  },
+  "metrics": {
+    "tore": "Tore",
+    "quote": "Siegquote",
+    "siege": "Siege",
+    "niederlagen": "Niederlagen",
+    "niederlagenquote": "Niederlagenquote",
+    "teilnahmen": "Teilnahmen",
+    "diff": "Torverhältnis",
+    "streak": "Serie",
+    "mvp": "MVP",
+    "eigen": "Eigentore"
+  },
+  "empty": "Noch keine Daten."
+}

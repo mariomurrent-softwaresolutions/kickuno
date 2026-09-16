@@ -1,0 +1,32 @@
+{
+  "tagline": "Fixtures, lineups and every stat.",
+  "mode": {
+    "login": "Log In",
+    "register": "Register"
+  },
+  "fields": {
+    "name": {
+      "label": "Name",
+      "placeholder": "First and last name"
+    },
+    "email": {
+      "label": "Email",
+      "placeholder": "you@example.com"
+    },
+    "password": {
+      "label": "Password"
+    }
+  },
+  "errors": {
+    "emailPasswordRequired": "Email and password are required.",
+    "nameRequired": "Name is required."
+  },
+  "submit": {
+    "register": "Create Account",
+    "login": "Sign In"
+  },
+  "switchMode": {
+    "toLogin": "Already have an account? Log in.",
+    "toRegister": "No account yet? Register — you'll need the group code right after."
+  }
+}

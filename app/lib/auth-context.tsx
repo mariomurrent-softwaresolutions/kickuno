@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 
 import * as api from './api';
 import type { ApiGroup, ApiMembership, ApiUser } from './api';
+import { applyUserLocale } from './i18n';
 
 // Payload's default JWT lifetime is 7200s (2h, cms/src/collections/Users.ts
 // doesn't override `tokenExpiration`). Refresh once less than half of that
@@ -142,6 +143,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
         setUser(restoredUser);
+        applyUserLocale(restoredUser.locale);
         await loadMembership(restoredUser.id);
       } catch {
         await api.setToken(null);
@@ -154,6 +156,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const { user: loggedInUser, token, exp } = await api.login(email, password);
     await api.setSession(token, exp);
     setUser(loggedInUser);
+    applyUserLocale(loggedInUser.locale);
     await loadMembership(loggedInUser.id);
   }
 

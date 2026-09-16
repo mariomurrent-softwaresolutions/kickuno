@@ -1,0 +1,41 @@
+{
+  "eyebrow": "PROFILE",
+  "position": "Position: {{position}}",
+  "positions": {
+    "tor": "Goalkeeper",
+    "abwehr": "Defense",
+    "mitte": "Midfield",
+    "sturm": "Forward"
+  },
+  "group": {
+    "eyebrow": "Group",
+    "roles": {
+      "admin": "Admin",
+      "organizer": "Organizer",
+      "player": "Player"
+    }
+  },
+  "myProfileLink": "My player profile",
+  "logout": {
+    "action": "Log out",
+    "loading": "Logging out…"
+  },
+  "language": {
+    "title": "Language"
+  },
+  "changePassword": {
+    "title": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat new password",
+    "errors": {
+      "required": "All fields are required.",
+      "tooShort": "New password must be at least 8 characters.",
+      "mismatch": "New passwords don't match.",
+      "generic": "Something went wrong."
+    },
+    "success": "Password changed.",
+    "save": "Save",
+    "saving": "Saving…"
+  }
+}

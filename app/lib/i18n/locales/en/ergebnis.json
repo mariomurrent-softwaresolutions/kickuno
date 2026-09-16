@@ -1,0 +1,13 @@
+{
+  "eyebrow": "RESULT",
+  "titleVs": "{{teamOne}} vs {{teamTwo}}",
+  "noTeams": "No teams assigned yet — set up {{teamOne}}/{{teamTwo}} in the fixture detail first.",
+  "goals": "Goals",
+  "ownGoal": "Own Goal",
+  "otherOwnGoal": "Other Own Goal {{team}}",
+  "mvp": "MVP",
+  "save": {
+    "action": "Save Result",
+    "loading": "Saving…"
+  }
+}

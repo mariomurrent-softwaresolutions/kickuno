@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -9,24 +10,19 @@ import * as api from '@/lib/api';
 import type { ApiGroupFeatures } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
-const WEEKDAY_OPTIONS: { value: number; label: string }[] = [
-  { value: 1, label: 'Mo' },
-  { value: 2, label: 'Di' },
-  { value: 3, label: 'Mi' },
-  { value: 4, label: 'Do' },
-  { value: 5, label: 'Fr' },
-  { value: 6, label: 'Sa' },
-  { value: 0, label: 'So' },
+const WEEKDAY_VALUES: { value: number; key: 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun' }[] = [
+  { value: 1, key: 'mon' },
+  { value: 2, key: 'tue' },
+  { value: 3, key: 'wed' },
+  { value: 4, key: 'thu' },
+  { value: 5, key: 'fri' },
+  { value: 6, key: 'sat' },
+  { value: 0, key: 'sun' },
 ];
 
 type FlagKey = keyof ApiGroupFeatures;
 
-const FLAGS: { key: FlagKey; label: string; hint: string }[] = [
-  { key: 'rsvp', label: 'Zusagen (RSVP)', hint: 'Bin dabei / Kann nicht auf dem nächsten Termin.' },
-  { key: 'autoBalance', label: 'Auto-Aufstellung', hint: 'Automatische Teamverteilung nach Stärke/Toren.' },
-  { key: 'strength', label: 'Stärke', hint: 'Stärke-Wert auf Profilen, Chips und der Balance-Anzeige.' },
-  { key: 'mvp', label: 'MVP', hint: 'MVP-Auswahl beim Ergebnis erfassen sowie MVP-Statistik und -Profilwerte. Standardmäßig aus.' },
-];
+const FLAG_KEYS: FlagKey[] = ['rsvp', 'autoBalance', 'strength', 'mvp'];
 
 /**
  * Admin-only group settings — implementation-plan.md §3.8/§4.5/§4.6. Every
@@ -36,6 +32,7 @@ const FLAGS: { key: FlagKey; label: string; hint: string }[] = [
  * Neuer Termin's date suggestions) picks it up right away.
  */
 export default function EinstellungenScreen() {
+  const { t } = useTranslation('einstellungen');
   const { group, membership, refreshGroup } = useAuth();
   const isAdmin = membership?.role === 'admin';
   const [savingDay, setSavingDay] = useState(false);
@@ -99,9 +96,9 @@ export default function EinstellungenScreen() {
   if (!group || !isAdmin) {
     return (
       <ScrollView className="flex-1 bg-bg-screen">
-        <ScreenHeader eyebrow="ADMIN" title="Einstellungen" onBack={() => router.back()} />
+        <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
         <Text className="font-body text-muted px-5 pt-4" style={{ fontSize: 13.5 }}>
-          Nur für Admins.
+          {t('adminOnly')}
         </Text>
       </ScrollView>
     );
@@ -109,18 +106,17 @@ export default function EinstellungenScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="ADMIN" title="Einstellungen" onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
       <VStack className="gap-6 px-5 pt-4">
         <VStack className="gap-2.5">
           <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
-            Standard-Spieltag
+            {t('gameDay.title')}
           </Text>
           <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-            Der Tag, den „Neuer Termin" standardmäßig vorschlägt — andere Tage lassen sich dort
-            trotzdem jederzeit über „Anderes Datum wählen" auswählen.
+            {t('gameDay.description')}
           </Text>
           <HStack className="flex-wrap gap-2">
-            {WEEKDAY_OPTIONS.map(({ value, label }) => {
+            {WEEKDAY_VALUES.map(({ value, key }) => {
               const active = group.defaultGameDay === value;
               return (
                 <Pressable
@@ -137,7 +133,7 @@ export default function EinstellungenScreen() {
                     className="font-body-semibold"
                     style={{ fontSize: 13, color: active ? colors.green : colors.ink }}
                   >
-                    {label}
+                    {t(`gameDay.weekdays.${key}`)}
                   </Text>
                 </Pressable>
               );
@@ -146,8 +142,10 @@ export default function EinstellungenScreen() {
         </VStack>
 
         <VStack className="gap-3">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Funktionen</Text>
-          {FLAGS.map(({ key, label, hint }) => {
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+            {t('features.title')}
+          </Text>
+          {FLAG_KEYS.map((key) => {
             const on = Boolean(group.features[key]);
             return (
               <Pressable
@@ -158,10 +156,10 @@ export default function EinstellungenScreen() {
               >
                 <VStack className="flex-1 gap-0.5 pr-3">
                   <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
-                    {label}
+                    {t(`features.${key}.label`)}
                   </Text>
                   <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-                    {hint}
+                    {t(`features.${key}.hint`)}
                   </Text>
                 </VStack>
                 <HStack
@@ -184,15 +182,16 @@ export default function EinstellungenScreen() {
         </VStack>
 
         <VStack className="gap-2.5">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Teamnamen</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+            {t('teamNames.title')}
+          </Text>
           <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-            Wie die beiden Teams in Termin-Detail und Ergebnis erfassen angezeigt werden — die
-            Zuordnung nach Farbe (Rot/Grün) im Hintergrund bleibt unverändert.
+            {t('teamNames.description')}
           </Text>
           <HStack className="gap-2.5">
             <VStack className="flex-1 gap-1.5">
               <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-red">
-                Team 1
+                {t('teamNames.teamOneLabel')}
               </Text>
               <TextInput
                 value={teamOneDraft}
@@ -206,7 +205,7 @@ export default function EinstellungenScreen() {
             </VStack>
             <VStack className="flex-1 gap-1.5">
               <Text className="font-body-semibold text-[10px] tracking-[1.5px] uppercase text-green">
-                Team 2
+                {t('teamNames.teamTwoLabel')}
               </Text>
               <TextInput
                 value={teamTwoDraft}
@@ -226,24 +225,26 @@ export default function EinstellungenScreen() {
               className="items-center rounded-[12px] bg-green py-2.5"
             >
               <Text className="font-body-bold" style={{ fontSize: 13, color: '#07120C' }}>
-                {savingTeamNames ? '…' : 'Speichern'}
+                {savingTeamNames ? '…' : t('teamNames.save')}
               </Text>
             </Pressable>
           )}
         </VStack>
 
         <VStack className="gap-2.5">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Hallen</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+            {t('halls.title')}
+          </Text>
           <Pressable
             onPress={() => router.push('/(app)/(tabs)/gruppe/hallen')}
             className="flex-row items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5"
           >
             <VStack className="flex-1 gap-0.5 pr-3">
               <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
-                Hallen verwalten
+                {t('halls.manage')}
               </Text>
               <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-                Namen, Kapazität und Notiz der Hallen für „Neuer Termin" bearbeiten.
+                {t('halls.description')}
               </Text>
             </VStack>
             <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>
@@ -253,17 +254,19 @@ export default function EinstellungenScreen() {
         </VStack>
 
         <VStack className="gap-2.5">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Saisons</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+            {t('seasons.title')}
+          </Text>
           <Pressable
             onPress={() => router.push('/(app)/(tabs)/gruppe/saisons')}
             className="flex-row items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-4 py-3.5"
           >
             <VStack className="flex-1 gap-0.5 pr-3">
               <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
-                Saisons verwalten
+                {t('seasons.manage')}
               </Text>
               <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-                Neue Saison starten, eine Saison abschließen oder reaktivieren.
+                {t('seasons.description')}
               </Text>
             </VStack>
             <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>

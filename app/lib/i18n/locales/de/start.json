@@ -1,0 +1,32 @@
+{
+  "eyebrow": "HALLENKICK",
+  "title": "Servus",
+  "nextFixture": "Nächster Termin",
+  "countdown": {
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "inDays": "in {{days}} Tagen"
+  },
+  "rsvp": {
+    "yes": "Bin dabei",
+    "no": "Kann nicht"
+  },
+  "none": "Kein bevorstehender Termin.",
+  "myStats": {
+    "title": "Meine Statistik — {{label}}",
+    "played": "Spiele",
+    "goals": "Tore",
+    "quote": "Siegquote",
+    "goalDiff": "Torverhältnis"
+  },
+  "myForm": {
+    "title": "Meine letzten 5",
+    "empty": "Noch keine Spiele."
+  },
+  "lastGame": {
+    "title": "Letztes Spiel"
+  },
+  "topScorers": {
+    "title": "Top-Scorer"
+  }
+}

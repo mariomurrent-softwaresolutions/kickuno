@@ -1,0 +1,44 @@
+{
+  "eyebrow": "GROUP",
+  "inviteCode": {
+    "title": "Invite Code",
+    "share": "Share",
+    "copied": "Copied",
+    "regenerate": "New Code"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Default game day, RSVPs, auto-balance, strength"
+  },
+  "filters": {
+    "all": "All",
+    "leadership": "Organizers",
+    "player": "Players"
+  },
+  "roles": {
+    "admin": "Admin",
+    "organizer": "Organizer",
+    "player": "Player"
+  },
+  "positions": {
+    "tor": "Goalkeeper",
+    "abwehr": "Defense",
+    "mitte": "Midfield",
+    "sturm": "Forward"
+  },
+  "empty": "No members in this view.",
+  "unknownMember": "Unknown",
+  "strength": "Strength {{value}}",
+  "suggestion": {
+    "label": "Suggestion: strength {{value}}",
+    "apply": "Apply"
+  },
+  "nickname": {
+    "placeholder": "Nickname",
+    "cancel": "Cancel",
+    "save": "Save",
+    "set": "Nickname: “{{name}}”",
+    "unset": "No nickname set",
+    "edit": "Edit"
+  }
+}

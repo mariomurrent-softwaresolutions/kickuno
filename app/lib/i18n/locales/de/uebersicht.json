@@ -1,0 +1,32 @@
+{
+  "eyebrow": "STATISTIK",
+  "title": "Übersicht",
+  "scope": {
+    "season": "Saison",
+    "alltime": "All-Time"
+  },
+  "summary": {
+    "playedCount": "Spieltage",
+    "totalGoals": "Tore gesamt",
+    "avgGoalsPerMatch": "Ø Tore/Spiel",
+    "avgAttendance": "Ø Teilnehmer",
+    "record": "{{wins}}S · {{draws}}U · {{losses}}N",
+    "noMatches": "Noch keine gespielten Termine."
+  },
+  "records": {
+    "title": "REKORDE",
+    "biggestWin": "Kantersieg",
+    "closestGame": "Knappstes Spiel",
+    "highestScoring": "Torreichstes Spiel"
+  },
+  "duos": {
+    "title": "BESTE DUOS",
+    "record": "{{wins}}S · {{draws}}U · {{losses}}N zusammen"
+  },
+  "hallOfFame": {
+    "title": "HALL OF FAME",
+    "topGoals": "Tore in einem Spiel",
+    "longestStreak": "Längste Siegesserie",
+    "streakUnit": "×S"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "eyebrow": "HALLENKICK",
+  "title": "Hey",
+  "nextFixture": "Next Fixture",
+  "countdown": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "inDays": "in {{days}} days"
+  },
+  "rsvp": {
+    "yes": "I'm in",
+    "no": "Can't make it"
+  },
+  "none": "No upcoming fixture.",
+  "myStats": {
+    "title": "My stats — {{label}}",
+    "played": "Played",
+    "goals": "Goals",
+    "quote": "Win rate",
+    "goalDiff": "Goal diff"
+  },
+  "myForm": {
+    "title": "My last 5",
+    "empty": "No games yet."
+  },
+  "lastGame": {
+    "title": "Last game"
+  },
+  "topScorers": {
+    "title": "Top scorers"
+  }
+}

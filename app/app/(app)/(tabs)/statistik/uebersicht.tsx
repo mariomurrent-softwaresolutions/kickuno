@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -10,6 +11,7 @@ import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import type { ApiAllTimeRecords, ApiDuoStanding, ApiMatchExtreme, ApiSeasonSummary } from '@/lib/api';
 import { colors } from '@/theme/tokens';
+import { dateFnsLocaleTag } from '@/lib/i18n';
 
 /**
  * Saison-Übersicht — split off the Statistik/Rangliste screen (§A/§B of
@@ -45,6 +47,7 @@ import { colors } from '@/theme/tokens';
  * loading?" rather than as a loading state.
  */
 export default function SaisonUebersichtScreen() {
+  const { t } = useTranslation('uebersicht');
   const { group } = useAuth();
   const [scope, setScope] = useState<'season' | 'alltime'>('season');
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
@@ -80,7 +83,7 @@ export default function SaisonUebersichtScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="STATISTIK" title="Übersicht" onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
       <VStack className="gap-5 px-5 pt-4">
         <HStack className="rounded-full border border-hairline bg-bg-card p-1">
           {(['season', 'alltime'] as const).map((s) => {
@@ -93,7 +96,7 @@ export default function SaisonUebersichtScreen() {
                 style={{ backgroundColor: active ? colors.bgSunken : 'transparent' }}
               >
                 <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.ink : colors.muted }}>
-                  {s === 'season' ? 'Saison' : 'All-Time'}
+                  {s === 'season' ? t('scope.season') : t('scope.alltime')}
                 </Text>
               </Pressable>
             );
@@ -135,19 +138,19 @@ export default function SaisonUebersichtScreen() {
         {summaryQuery.isLoading ? (
           <SeasonSummaryCardSkeleton />
         ) : summaryQuery.data ? (
-          <SeasonSummaryCard summary={summaryQuery.data.summary} />
+          <SeasonSummaryCard summary={summaryQuery.data.summary} t={t} />
         ) : null}
 
         {summaryQuery.isLoading ? (
           <BesteDuosCardSkeleton />
         ) : summaryQuery.data?.bestDuos.length ? (
-          <BesteDuosCard duos={summaryQuery.data.bestDuos} />
+          <BesteDuosCard duos={summaryQuery.data.bestDuos} t={t} />
         ) : null}
 
         {scope === 'alltime' && allTimeRecordsQuery.isLoading ? (
           <HallOfFameCardSkeleton />
         ) : scope === 'alltime' && allTimeRecordsQuery.data?.records ? (
-          <HallOfFameCard records={allTimeRecordsQuery.data.records} />
+          <HallOfFameCard records={allTimeRecordsQuery.data.records} t={t} />
         ) : null}
       </VStack>
     </ScrollView>
@@ -159,17 +162,19 @@ export default function SaisonUebersichtScreen() {
  * feature-plan-stats-enhancements.md` §A/§B. Four stat tiles, a Rot-vs-Grün
  * record row, and (when any exist) a season-scoped records section.
  */
-function SeasonSummaryCard({ summary }: { summary: ApiSeasonSummary }) {
-  const redRecord = `${summary.red.wins}S · ${summary.red.draws}U · ${summary.red.losses}N`;
-  const greenRecord = `${summary.green.wins}S · ${summary.green.draws}U · ${summary.green.losses}N`;
+type TFn = (key: string, options?: Record<string, unknown>) => string;
+
+function SeasonSummaryCard({ summary, t }: { summary: ApiSeasonSummary; t: TFn }) {
+  const redRecord = t('summary.record', { wins: summary.red.wins, draws: summary.red.draws, losses: summary.red.losses });
+  const greenRecord = t('summary.record', { wins: summary.green.wins, draws: summary.green.draws, losses: summary.green.losses });
 
   return (
     <VStack className="gap-3 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
       <HStack className="flex-wrap gap-4">
-        <SummaryTile label="Spieltage" value={String(summary.playedCount)} />
-        <SummaryTile label="Tore gesamt" value={String(summary.totalGoals)} />
-        <SummaryTile label="Ø Tore/Spiel" value={summary.avgGoalsPerMatch.toFixed(1)} />
-        <SummaryTile label="Ø Teilnehmer" value={summary.avgAttendance.toFixed(1)} />
+        <SummaryTile label={t('summary.playedCount')} value={String(summary.playedCount)} />
+        <SummaryTile label={t('summary.totalGoals')} value={String(summary.totalGoals)} />
+        <SummaryTile label={t('summary.avgGoalsPerMatch')} value={summary.avgGoalsPerMatch.toFixed(1)} />
+        <SummaryTile label={t('summary.avgAttendance')} value={summary.avgAttendance.toFixed(1)} />
       </HStack>
 
       {summary.playedCount > 0 ? (
@@ -189,18 +194,18 @@ function SeasonSummaryCard({ summary }: { summary: ApiSeasonSummary }) {
         </HStack>
       ) : (
         <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
-          Noch keine gespielten Termine.
+          {t('summary.noMatches')}
         </Text>
       )}
 
       {summary.records.biggestWin || summary.records.closestGame || summary.records.highestScoring ? (
         <VStack className="gap-1.5 border-t border-hairline pt-3">
           <Text className="font-body-semibold text-muted" style={{ fontSize: 10.5, letterSpacing: 0.4 }}>
-            REKORDE
+            {t('records.title')}
           </Text>
-          <RecordRow label="Kantersieg" extreme={summary.records.biggestWin} />
-          <RecordRow label="Knappstes Spiel" extreme={summary.records.closestGame} />
-          <RecordRow label="Torreichstes Spiel" extreme={summary.records.highestScoring} />
+          <RecordRow label={t('records.biggestWin')} extreme={summary.records.biggestWin} />
+          <RecordRow label={t('records.closestGame')} extreme={summary.records.closestGame} />
+          <RecordRow label={t('records.highestScoring')} extreme={summary.records.highestScoring} />
         </VStack>
       ) : null}
     </VStack>
@@ -250,11 +255,11 @@ function SummaryTile({ label, value }: { label: string; value: string }) {
  * FAME); this one does too. Not pressable (unlike the Hall of Fame rows)
  * since a duo doesn't map to a single Spielerprofil to open.
  */
-function BesteDuosCard({ duos }: { duos: ApiDuoStanding[] }) {
+function BesteDuosCard({ duos, t }: { duos: ApiDuoStanding[]; t: TFn }) {
   return (
     <VStack className="gap-2.5 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
       <Text className="font-body-semibold text-muted" style={{ fontSize: 10.5, letterSpacing: 0.4 }}>
-        BESTE DUOS
+        {t('duos.title')}
       </Text>
       {duos.map((duo) => (
         <HStack key={`${duo.playerA.playerId}-${duo.playerB.playerId}`} className="items-center justify-between">
@@ -263,7 +268,7 @@ function BesteDuosCard({ duos }: { duos: ApiDuoStanding[] }) {
               {duo.playerA.name} & {duo.playerB.name}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-              {duo.wins}S · {duo.draws}U · {duo.losses}N zusammen
+              {t('duos.record', { wins: duo.wins, draws: duo.draws, losses: duo.losses })}
             </Text>
           </VStack>
           <Text className="font-heading text-gold" style={{ fontSize: 20 }}>
@@ -295,7 +300,7 @@ function BesteDuosCardSkeleton() {
 
 function fmtRecordDate(date: string): string {
   const d = new Date(date);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('de-AT', { day: '2-digit', month: '2-digit', year: '2-digit' });
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(dateFnsLocaleTag(), { day: '2-digit', month: '2-digit', year: '2-digit' });
 }
 
 function RecordRow({ label, extreme }: { label: string; extreme: ApiMatchExtreme | null }) {
@@ -325,13 +330,13 @@ function RecordRow({ label, extreme }: { label: string; extreme: ApiMatchExtreme
  * deliberately all-time-only rather than season-scoped like `RecordRow`
  * above.
  */
-function HallOfFameCard({ records }: { records: ApiAllTimeRecords }) {
+function HallOfFameCard({ records, t }: { records: ApiAllTimeRecords; t: TFn }) {
   if (!records.topSingleMatchGoals && !records.longestWinStreak) return null;
 
   return (
     <VStack className="gap-2.5 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
       <Text className="font-body-semibold text-muted" style={{ fontSize: 10.5, letterSpacing: 0.4 }}>
-        HALL OF FAME
+        {t('hallOfFame.title')}
       </Text>
 
       {records.topSingleMatchGoals ? (
@@ -348,7 +353,7 @@ function HallOfFameCard({ records }: { records: ApiAllTimeRecords }) {
               {records.topSingleMatchGoals.name}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-              Tore in einem Spiel · {fmtRecordDate(records.topSingleMatchGoals.date)}
+              {t('hallOfFame.topGoals')} · {fmtRecordDate(records.topSingleMatchGoals.date)}
             </Text>
           </VStack>
           <Text className="font-heading text-gold" style={{ fontSize: 20 }}>
@@ -369,11 +374,11 @@ function HallOfFameCard({ records }: { records: ApiAllTimeRecords }) {
               {records.longestWinStreak.name}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 11 }}>
-              Längste Siegesserie
+              {t('hallOfFame.longestStreak')}
             </Text>
           </VStack>
           <Text className="font-heading text-gold" style={{ fontSize: 20 }}>
-            {records.longestWinStreak.streak}×S
+            {records.longestWinStreak.streak}{t('hallOfFame.streakUnit')}
           </Text>
         </Pressable>
       ) : null}

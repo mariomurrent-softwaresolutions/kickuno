@@ -1,0 +1,23 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Saisons",
+  "adminOnly": "Nur für Admins und Organisatoren.",
+  "description": "Genau eine Saison ist zu jedem Zeitpunkt aktiv — an ihr hängen neue Termine und die „Saison\"-Statistik. Eine neue Saison zu starten schließt die aktuelle automatisch ab.",
+  "empty": "Noch keine Saisons angelegt.",
+  "status": {
+    "active": "Aktive Saison",
+    "completed": "Abgeschlossen"
+  },
+  "complete": "Abschließen",
+  "reactivate": "Reaktivieren",
+  "form": {
+    "labelLabel": "Bezeichnung",
+    "labelPlaceholder": "z.B. 26/27",
+    "cancel": "Abbrechen",
+    "save": "Speichern"
+  },
+  "addNew": "+ Neue Saison starten",
+  "errors": {
+    "labelRequired": "Bezeichnung ist erforderlich."
+  }
+}

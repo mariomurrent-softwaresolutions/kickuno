@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -51,6 +52,7 @@ const PODIUM_DISPLAY_ORDER: (1 | 2 | 3)[] = [2, 1, 3];
  * erfassen and the MVP tiles on Spielerprofil.
  */
 export default function StatistikScreen() {
+  const { t } = useTranslation('statistik');
   const { group } = useAuth();
   const mvpEnabled = Boolean(group?.features.mvp);
   const visibleMetrics = api.STATS_METRICS.filter((m) => m.key !== 'mvp' || mvpEnabled);
@@ -114,7 +116,7 @@ export default function StatistikScreen() {
         />
       }
     >
-      <ScreenHeader eyebrow="STATISTIK" title="Rangliste" />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} />
       <VStack className="gap-5 px-5 pt-4">
         <Pressable
           onPress={() => router.push('/(app)/(tabs)/statistik/uebersicht')}
@@ -122,10 +124,10 @@ export default function StatistikScreen() {
         >
           <VStack className="flex-1 gap-0.5 pr-3">
             <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }}>
-              Saison-Übersicht
+              {t('overview.title')}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-              Spieltage, Tore, Rekorde, beste Duos und die Hall of Fame.
+              {t('overview.description')}
             </Text>
           </VStack>
           <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 13 }}>
@@ -144,7 +146,7 @@ export default function StatistikScreen() {
                 style={{ backgroundColor: active ? colors.bgSunken : 'transparent' }}
               >
                 <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.ink : colors.muted }}>
-                  {s === 'season' ? 'Saison' : 'All-Time'}
+                  {s === 'season' ? t('scope.season') : t('scope.alltime')}
                 </Text>
               </Pressable>
             );
@@ -188,7 +190,7 @@ export default function StatistikScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8, paddingRight: 8 }}
         >
-          {visibleMetrics.map(({ key, label }) => {
+          {visibleMetrics.map(({ key }) => {
             const active = metric === key;
             return (
               <Pressable
@@ -201,7 +203,7 @@ export default function StatistikScreen() {
                 }}
               >
                 <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.gold : colors.ink }}>
-                  {label}
+                  {t(`metrics.${key}`)}
                 </Text>
               </Pressable>
             );
@@ -281,7 +283,7 @@ export default function StatistikScreen() {
             ))
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Noch keine Daten.
+              {t('empty')}
             </Text>
           )}
         </VStack>

@@ -1,0 +1,44 @@
+{
+  "eyebrow": "GRUPPE",
+  "inviteCode": {
+    "title": "Einladungs-Code",
+    "share": "Teilen",
+    "copied": "Kopiert",
+    "regenerate": "Neuer Code"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "description": "Standard-Spieltag, Zusagen, Auto-Aufstellung, Stärke"
+  },
+  "filters": {
+    "all": "Alle",
+    "leadership": "Organisatoren",
+    "player": "Spieler"
+  },
+  "roles": {
+    "admin": "Admin",
+    "organizer": "Organisator",
+    "player": "Spieler"
+  },
+  "positions": {
+    "tor": "Tor",
+    "abwehr": "Abwehr",
+    "mitte": "Mitte",
+    "sturm": "Sturm"
+  },
+  "empty": "Keine Mitglieder in dieser Ansicht.",
+  "unknownMember": "Unbekannt",
+  "strength": "Stärke {{value}}",
+  "suggestion": {
+    "label": "Vorschlag: Stärke {{value}}",
+    "apply": "Übernehmen"
+  },
+  "nickname": {
+    "placeholder": "Spitzname",
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "set": "Spitzname: „{{name}}“",
+    "unset": "Kein Spitzname gesetzt",
+    "edit": "Bearbeiten"
+  }
+}

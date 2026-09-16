@@ -3,6 +3,8 @@ import { RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 
+import { useTranslation } from 'react-i18next';
+
 import { Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { FixtureRow } from '@/components/ui/fixture-row';
@@ -24,6 +26,7 @@ import { colors } from '@/theme/tokens';
  * green "Ergebnis vorhanden" dot as the main list.
  */
 export default function SaisonTermineScreen() {
+  const { t } = useTranslation('termine');
   const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
   const { group } = useAuth();
 
@@ -61,7 +64,7 @@ export default function SaisonTermineScreen() {
         <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <ScreenHeader eyebrow="SAISON" title={season?.label ?? '…'} onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('season.eyebrow')} title={season?.label ?? '…'} onBack={() => router.back()} />
       <VStack className="gap-4 px-5 pt-4">
         {groups.length ? (
           <VStack className="gap-4">
@@ -92,7 +95,7 @@ export default function SaisonTermineScreen() {
           <Spinner />
         ) : (
           <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-            Keine Termine in dieser Saison.
+            {t('season.empty')}
           </Text>
         )}
       </VStack>

@@ -1,0 +1,32 @@
+{
+  "tagline": "Termine, Aufstellungen und alle Zahlen.",
+  "mode": {
+    "login": "Einloggen",
+    "register": "Registrieren"
+  },
+  "fields": {
+    "name": {
+      "label": "Name",
+      "placeholder": "Vor- und Nachname"
+    },
+    "email": {
+      "label": "E-Mail",
+      "placeholder": "du@example.com"
+    },
+    "password": {
+      "label": "Passwort"
+    }
+  },
+  "errors": {
+    "emailPasswordRequired": "E-Mail und Passwort werden benötigt.",
+    "nameRequired": "Name wird benötigt."
+  },
+  "submit": {
+    "register": "Konto erstellen",
+    "login": "Einsteigen"
+  },
+  "switchMode": {
+    "toLogin": "Schon ein Konto? Einloggen.",
+    "toRegister": "Noch kein Konto? Registrieren — den Gruppen-Code brauchst du gleich danach."
+  }
+}

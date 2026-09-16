@@ -46,7 +46,16 @@
       ],
       "expo-image",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-localization",
+        {
+          "supportedLocales": [
+            "de",
+            "en"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

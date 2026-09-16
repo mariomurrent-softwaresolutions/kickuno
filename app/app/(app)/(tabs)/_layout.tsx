@@ -1,4 +1,5 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text } from '@/components/ui/primitives';
 import { GruppeIcon, ProfilIcon, StartIcon, StatistikIcon, TermineIcon } from '@/components/ui/icons';
@@ -7,13 +8,14 @@ import { colors } from '@/theme/tokens';
 const ICONS = [StartIcon, TermineIcon, StatistikIcon, GruppeIcon, ProfilIcon];
 
 export default function TabsLayout() {
+  const { t } = useTranslation('common');
   return (
     <Tabs screenOptions={{ headerShown: false }} tabBar={(props) => <AppTabBar {...props} />}>
-      <Tabs.Screen name="index" options={{ title: 'Start' }} />
-      <Tabs.Screen name="termine" options={{ title: 'Termine' }} />
-      <Tabs.Screen name="statistik" options={{ title: 'Statistik' }} />
-      <Tabs.Screen name="gruppe" options={{ title: 'Gruppe' }} />
-      <Tabs.Screen name="profil" options={{ title: 'Profil' }} />
+      <Tabs.Screen name="index" options={{ title: t('tabs.start') }} />
+      <Tabs.Screen name="termine" options={{ title: t('tabs.termine') }} />
+      <Tabs.Screen name="statistik" options={{ title: t('tabs.statistik') }} />
+      <Tabs.Screen name="gruppe" options={{ title: t('tabs.gruppe') }} />
+      <Tabs.Screen name="profil" options={{ title: t('tabs.profil') }} />
     </Tabs>
   );
 }

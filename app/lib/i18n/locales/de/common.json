@@ -1,0 +1,85 @@
+{
+  "language": {
+    "label": "Sprache",
+    "de": "Deutsch",
+    "en": "Englisch"
+  },
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen."
+  },
+  "weekdaysLong": {
+    "sun": "Sonntag",
+    "mon": "Montag",
+    "tue": "Dienstag",
+    "wed": "Mittwoch",
+    "thu": "Donnerstag",
+    "fri": "Freitag",
+    "sat": "Samstag"
+  },
+  "monthsShort": {
+    "jan": "Jan",
+    "feb": "Feb",
+    "mar": "Mär",
+    "apr": "Apr",
+    "may": "Mai",
+    "jun": "Jun",
+    "jul": "Jul",
+    "aug": "Aug",
+    "sep": "Sep",
+    "oct": "Okt",
+    "nov": "Nov",
+    "dec": "Dez"
+  },
+  "tabs": {
+    "start": "Start",
+    "termine": "Termine",
+    "statistik": "Statistik",
+    "gruppe": "Gruppe",
+    "profil": "Profil"
+  },
+  "time": {
+    "suffix": " Uhr"
+  },
+  "weekdaysShort": {
+    "sun": "SO",
+    "mon": "MO",
+    "tue": "DI",
+    "wed": "MI",
+    "thu": "DO",
+    "fri": "FR",
+    "sat": "SA"
+  },
+  "monthsLong": {
+    "jan": "Januar",
+    "feb": "Februar",
+    "mar": "März",
+    "apr": "April",
+    "may": "Mai",
+    "jun": "Juni",
+    "jul": "Juli",
+    "aug": "August",
+    "sep": "September",
+    "oct": "Oktober",
+    "nov": "November",
+    "dec": "Dezember"
+  },
+  "weekdaysAbbr": {
+    "sun": "So",
+    "mon": "Mo",
+    "tue": "Di",
+    "wed": "Mi",
+    "thu": "Do",
+    "fri": "Fr",
+    "sat": "Sa"
+  },
+  "weekdayPlural": {
+    "sun": "Sonntage",
+    "mon": "Montage",
+    "tue": "Dienstage",
+    "wed": "Mittwoche",
+    "thu": "Donnerstage",
+    "fri": "Freitage",
+    "sat": "Samstage"
+  },
+  "seeAll": "Alle anzeigen"
+}

@@ -1,0 +1,35 @@
+{
+  "eyebrow": "SPIELERPROFIL",
+  "notFound": "Nicht gefunden",
+  "notFoundBody": "Dieser Spieler ist kein Mitglied deiner Gruppe (mehr).",
+  "legacyBadge": "EHEMALIG",
+  "positions": {
+    "tor": "Tor",
+    "abwehr": "Abwehr",
+    "mitte": "Mitte",
+    "sturm": "Sturm"
+  },
+  "strength": "Stärke {{value}}",
+  "memberSince": "dabei seit {{year}}",
+  "form": {
+    "title": "Form (letzte 5)"
+  },
+  "season": {
+    "title": "Saison {{label}}",
+    "played": "Spiele",
+    "goals": "Tore",
+    "quote": "Siegquote",
+    "record": "S / U / N",
+    "goalDiff": "Torverhältnis",
+    "mvp": "MVP"
+  },
+  "allTime": {
+    "title": "All-Time",
+    "played": "Spiele gesamt",
+    "goals": "Tore gesamt",
+    "wins": "Siege gesamt",
+    "quote": "Siegquote all-time",
+    "mvps": "MVP-Titel",
+    "ownGoals": "Eigentore"
+  }
+}

@@ -3,6 +3,7 @@ import { RefreshControl, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -13,9 +14,9 @@ import * as api from '@/lib/api';
 import type { ApiMemberRow } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
-const ROLE_LABELS: Record<string, string> = { admin: 'Admin', organizer: 'Organisator', player: 'Spieler' };
+const ROLE_KEYS: Record<string, 'admin' | 'organizer' | 'player'> = { admin: 'admin', organizer: 'organizer', player: 'player' };
 const ROLE_COLORS: Record<string, string> = { admin: colors.gold, organizer: colors.green, player: colors.dim };
-const POSITION_LABELS: Record<string, string> = { tor: 'Tor', abwehr: 'Abwehr', mitte: 'Mitte', sturm: 'Sturm' };
+const POSITION_KEYS: Record<string, 'tor' | 'abwehr' | 'mitte' | 'sturm'> = { tor: 'tor', abwehr: 'abwehr', mitte: 'mitte', sturm: 'sturm' };
 
 // implementation-plan.md §4.5 names the prototype's three filter chips
 // verbatim ("Alle/Organisatoren/Stammspieler"), but "Stammspieler" there
@@ -27,11 +28,7 @@ const POSITION_LABELS: Record<string, string> = { tor: 'Tor', abwehr: 'Abwehr', 
 // every member exactly once, rather than pulling in an unrelated stats call
 // just to reproduce an activity threshold the plan didn't otherwise need.
 type RoleFilter = 'all' | 'leadership' | 'player';
-const ROLE_FILTERS: { key: RoleFilter; label: string }[] = [
-  { key: 'all', label: 'Alle' },
-  { key: 'leadership', label: 'Organisatoren' },
-  { key: 'player', label: 'Spieler' },
-];
+const ROLE_FILTERS: { key: RoleFilter }[] = [{ key: 'all' }, { key: 'leadership' }, { key: 'player' }];
 
 function avatarInitials(row: ApiMemberRow): string {
   return row.user?.initials ?? row.user?.name?.slice(0, 2).toUpperCase() ?? '?';
@@ -57,6 +54,7 @@ function avatarInitials(row: ApiMemberRow): string {
  * that into WhatsApp themselves.
  */
 export default function GruppeScreen() {
+  const { t } = useTranslation('gruppe');
   const { group, membership } = useAuth();
   const isAdmin = membership?.role === 'admin';
   const isLeadership = membership?.role === 'admin' || membership?.role === 'organizer';
@@ -168,11 +166,11 @@ export default function GruppeScreen() {
         <RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={handleRefresh} />
       }
     >
-      <ScreenHeader eyebrow="GRUPPE" title={group?.name ?? '…'} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={group?.name ?? '…'} />
       <VStack className="gap-5 px-5 pt-4">
         {group ? (
           <VStack className="gap-3 rounded-[18px] border border-hairline bg-bg-card p-4">
-            <Text className="font-body-semibold text-[10px] tracking-[2px] uppercase text-dim">Einladungs-Code</Text>
+            <Text className="font-body-semibold text-[10px] tracking-[2px] uppercase text-dim">{t('inviteCode.title')}</Text>
             <HStack className="items-center justify-between">
               <Text className="font-heading text-ink" style={{ fontSize: 26, letterSpacing: 3 }}>
                 {group.inviteCode}
@@ -184,7 +182,7 @@ export default function GruppeScreen() {
                   style={{ borderColor: colors.green, backgroundColor: 'rgba(47,191,110,0.10)' }}
                 >
                   <Text className="font-body-bold text-green" style={{ fontSize: 13 }}>
-                    {copied ? 'Kopiert' : 'Teilen'}
+                    {copied ? t('inviteCode.copied') : t('inviteCode.share')}
                   </Text>
                 </Pressable>
                 {isLeadership ? (
@@ -194,7 +192,7 @@ export default function GruppeScreen() {
                     className="rounded-[12px] border border-hairline bg-bg-sunken px-3.5 py-2.5"
                   >
                     <Text className="font-body-semibold text-muted" style={{ fontSize: 13 }}>
-                      {regenerating ? '…' : 'Neuer Code'}
+                      {regenerating ? '…' : t('inviteCode.regenerate')}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -210,10 +208,10 @@ export default function GruppeScreen() {
           >
             <VStack className="gap-0.5">
               <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
-                Einstellungen
+                {t('settings.title')}
               </Text>
               <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-                Standard-Spieltag, Zusagen, Auto-Aufstellung, Stärke
+                {t('settings.description')}
               </Text>
             </VStack>
             <ChevronForwardIcon color={colors.dim} />
@@ -221,7 +219,7 @@ export default function GruppeScreen() {
         )}
 
         <HStack className="rounded-full border border-hairline bg-bg-card p-1">
-          {ROLE_FILTERS.map(({ key, label }) => {
+          {ROLE_FILTERS.map(({ key }) => {
             const active = roleFilter === key;
             return (
               <Pressable
@@ -231,7 +229,7 @@ export default function GruppeScreen() {
                 style={{ backgroundColor: active ? colors.bgSunken : 'transparent' }}
               >
                 <Text className="font-body-semibold" style={{ fontSize: 12.5, color: active ? colors.ink : colors.muted }}>
-                  {label}
+                  {t(`filters.${key}`)}
                 </Text>
               </Pressable>
             );
@@ -243,7 +241,7 @@ export default function GruppeScreen() {
             <Spinner />
           ) : filtered.length === 0 ? (
             <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-              Keine Mitglieder in dieser Ansicht.
+              {t('empty')}
             </Text>
           ) : (
             filtered.map((row) => {
@@ -271,12 +269,16 @@ export default function GruppeScreen() {
                       </Box>
                       <VStack className="flex-1 gap-0.5">
                         <Text className="font-body-semibold text-ink" style={{ fontSize: 14 }} numberOfLines={1}>
-                          {row.user?.name ?? 'Unbekannt'}
+                          {row.user?.name ?? t('unknownMember')}
                         </Text>
                         <Text className="font-body text-muted" style={{ fontSize: 11.5 }} numberOfLines={1}>
                           {[
-                            row.user?.position ? POSITION_LABELS[row.user.position] ?? row.user.position : null,
-                            strengthEnabled && typeof row.strength === 'number' ? `Stärke ${row.strength}` : null,
+                            row.user?.position
+                              ? POSITION_KEYS[row.user.position]
+                                ? t(`positions.${POSITION_KEYS[row.user.position]}`)
+                                : row.user.position
+                              : null,
+                            strengthEnabled && typeof row.strength === 'number' ? t('strength', { value: row.strength }) : null,
                           ]
                             .filter(Boolean)
                             .join(' · ')}
@@ -288,7 +290,7 @@ export default function GruppeScreen() {
                       style={{ borderWidth: 1, borderColor: `${ROLE_COLORS[row.role]}66` }}
                     >
                       <Text className="font-body-semibold" style={{ fontSize: 10.5, color: ROLE_COLORS[row.role] }}>
-                        {ROLE_LABELS[row.role] ?? row.role}
+                        {ROLE_KEYS[row.role] ? t(`roles.${ROLE_KEYS[row.role]}`) : row.role}
                       </Text>
                     </Box>
                   </HStack>
@@ -296,7 +298,7 @@ export default function GruppeScreen() {
                   {showSuggestion ? (
                     <HStack className="items-center justify-between pt-2.5 mt-2.5" style={{ borderTopWidth: 1, borderTopColor: colors.hairline }}>
                       <Text className="font-body text-muted-soft" style={{ fontSize: 12 }}>
-                        Vorschlag: Stärke {row.suggestedStrength}
+                        {t('suggestion.label', { value: row.suggestedStrength })}
                       </Text>
                       <Pressable
                         onPress={() => handleApplySuggested(row)}
@@ -305,7 +307,7 @@ export default function GruppeScreen() {
                         style={{ borderColor: colors.gold, backgroundColor: 'rgba(244,211,94,0.10)' }}
                       >
                         <Text className="font-body-bold text-gold" style={{ fontSize: 11.5 }}>
-                          {applyingId === row.id ? '…' : 'Übernehmen'}
+                          {applyingId === row.id ? '…' : t('suggestion.apply')}
                         </Text>
                       </Pressable>
                     </HStack>
@@ -321,7 +323,7 @@ export default function GruppeScreen() {
                           <TextInput
                             value={nicknameDraft}
                             onChangeText={setNicknameDraft}
-                            placeholder="Spitzname"
+                            placeholder={t('nickname.placeholder')}
                             placeholderTextColor={colors.dim}
                             maxLength={30}
                             autoFocus
@@ -330,7 +332,7 @@ export default function GruppeScreen() {
                           />
                           <Pressable onPress={() => setEditingNicknameId(null)} className="px-1 py-1.5">
                             <Text className="font-body-semibold text-muted" style={{ fontSize: 12.5 }}>
-                              Abbrechen
+                              {t('nickname.cancel')}
                             </Text>
                           </Pressable>
                           <Pressable
@@ -339,18 +341,18 @@ export default function GruppeScreen() {
                             className="rounded-[10px] bg-green px-3 py-1.5"
                           >
                             <Text className="font-body-bold" style={{ fontSize: 12, color: '#07120C' }}>
-                              {savingNickname ? '…' : 'Speichern'}
+                              {savingNickname ? '…' : t('nickname.save')}
                             </Text>
                           </Pressable>
                         </HStack>
                       ) : (
                         <HStack className="items-center justify-between">
                           <Text className="font-body text-muted-soft" style={{ fontSize: 12 }}>
-                            {row.nickname ? `Spitzname: „${row.nickname}“` : 'Kein Spitzname gesetzt'}
+                            {row.nickname ? t('nickname.set', { name: row.nickname }) : t('nickname.unset')}
                           </Text>
                           <Pressable onPress={() => startEditNickname(row)} className="px-2 py-1">
                             <Text className="font-body-semibold text-muted" style={{ fontSize: 12 }}>
-                              Bearbeiten
+                              {t('nickname.edit')}
                             </Text>
                           </Pressable>
                         </HStack>

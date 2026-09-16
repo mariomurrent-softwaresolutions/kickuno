@@ -1,0 +1,19 @@
+{
+  "eyebrow": "TERMINE",
+  "title": "Termine",
+  "addNew": "Neuen Termin anlegen",
+  "upcoming": {
+    "title": "Bevorstehend",
+    "empty": "Keine bevorstehenden Termine.",
+    "attendance": "{{count}} Zusagen"
+  },
+  "past": {
+    "title": "Gespielt",
+    "empty": "Noch keine gespielten Termine."
+  },
+  "pastSeasons": "Vergangene Saisons",
+  "season": {
+    "eyebrow": "SAISON",
+    "empty": "Keine Termine in dieser Saison."
+  }
+}

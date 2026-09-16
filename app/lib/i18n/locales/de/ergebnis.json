@@ -1,0 +1,13 @@
+{
+  "eyebrow": "ERGEBNIS",
+  "titleVs": "{{teamOne}} gegen {{teamTwo}}",
+  "noTeams": "Noch keine Teams eingeteilt — zuerst im Termin-Detail {{teamOne}}/{{teamTwo}} besetzen.",
+  "goals": "Tore",
+  "ownGoal": "Eigentor",
+  "otherOwnGoal": "Sonstiges Eigentor {{team}}",
+  "mvp": "MVP",
+  "save": {
+    "action": "Ergebnis speichern",
+    "loading": "Speichert…"
+  }
+}

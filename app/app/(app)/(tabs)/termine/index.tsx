@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -28,6 +29,7 @@ import { colors } from '@/theme/tokens';
  * fixture recorded under that season regardless of its own status.
  */
 export default function TermineScreen() {
+  const { t } = useTranslation('termine');
   const { group, membership } = useAuth();
   const features = useFeatures();
   const canManage = membership?.role === 'admin' || membership?.role === 'organizer';
@@ -77,7 +79,7 @@ export default function TermineScreen() {
       contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={<RefreshControl tintColor={colors.dim} refreshing={isRefreshing} onRefresh={refresh} />}
     >
-      <ScreenHeader eyebrow="TERMINE" title="Termine" />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} />
       <VStack className="gap-6 px-5 pt-4">
         {canManage && (
           <Pressable
@@ -86,13 +88,13 @@ export default function TermineScreen() {
           >
             <PlusIcon color={colors.mutedSoft} />
             <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 14 }}>
-              Neuen Termin anlegen
+              {t('addNew')}
             </Text>
           </Pressable>
         )}
 
         <VStack className="gap-3">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Bevorstehend</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('upcoming.title')}</Text>
           {upcomingGroups.length ? (
             <VStack className="gap-4">
               {upcomingGroups.map((group) => (
@@ -113,7 +115,7 @@ export default function TermineScreen() {
                         }
                         attendanceLabel={
                           features.rsvp && fixture.rsvpYesCount !== undefined
-                            ? `${fixture.rsvpYesCount} Zusagen`
+                            ? t('upcoming.attendance', { count: fixture.rsvpYesCount })
                             : undefined
                         }
                         onPress={() => router.push(`/(app)/(tabs)/termine/${fixture.id}`)}
@@ -127,13 +129,13 @@ export default function TermineScreen() {
             <Spinner />
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              Keine bevorstehenden Termine.
+              {t('upcoming.empty')}
             </Text>
           )}
         </VStack>
 
         <VStack className="gap-3">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Gespielt</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('past.title')}</Text>
           {pastGroups.length ? (
             <VStack className="gap-4">
               {pastGroups.map((group) => (
@@ -163,7 +165,7 @@ export default function TermineScreen() {
             <Spinner />
           ) : (
             <Text className="font-body text-muted" style={{ fontSize: 13.5 }}>
-              Noch keine gespielten Termine.
+              {t('past.empty')}
             </Text>
           )}
         </VStack>
@@ -171,7 +173,7 @@ export default function TermineScreen() {
         {pastSeasons.length > 0 && (
           <VStack className="gap-3">
             <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
-              Vergangene Saisons
+              {t('pastSeasons')}
             </Text>
             <VStack className="gap-2">
               {pastSeasons.map((season) => (

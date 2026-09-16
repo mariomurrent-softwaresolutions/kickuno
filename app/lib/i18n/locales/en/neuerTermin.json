@@ -1,0 +1,21 @@
+{
+  "eyebrow": "NEW",
+  "title": "New Fixture",
+  "date": {
+    "label": "Date",
+    "showSuggested": "Suggested Dates",
+    "showCustom": "Pick Another Date"
+  },
+  "time": {
+    "label": "Time"
+  },
+  "hall": {
+    "label": "Hall",
+    "placeholder": "e.g. East Hall"
+  },
+  "repeatWeekly": {
+    "title": "Repeat Weekly",
+    "description": "Creates the next 8 {{weekdayPlural}}."
+  },
+  "submit": "Create Fixture"
+}

@@ -1,0 +1,24 @@
+{
+  "eyebrow": "ADMIN",
+  "title": "Halls",
+  "adminOnly": "Admins only.",
+  "description": "The halls \"New fixture\" can choose from. Capacity drives the RSVP display (e.g. \"12 / 16 confirmed\").",
+  "empty": "No halls added yet.",
+  "edit": "Edit",
+  "addNew": "+ New hall",
+  "capacitySuffix": "{{count}} spots",
+  "form": {
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. East Hall",
+    "capacityLabel": "Capacity",
+    "capacityPlaceholder": "16",
+    "noteLabel": "Note",
+    "notePlaceholder": "e.g. Standard · 16 spots",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "save": "Save"
+  },
+  "errors": {
+    "nameRequired": "Name is required."
+  }
+}

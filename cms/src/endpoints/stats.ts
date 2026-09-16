@@ -129,11 +129,14 @@ export const statsEndpoint: Endpoint = {
     }
 
     const allRows = await computeGroupPlayerStats(req.payload, groupId, seasonId);
-    // Teilnahmen%'s denominator: the season's actual played-fixture count,
-    // not a hardcoded assumed season length (feature-plan-stats-enhancements
-    // follow-up, 2026-09-16). Only relevant for scope=season — scope=alltime's
-    // "Teilnahmen" sub-label doesn't render a percentage at all.
-    const seasonFixtureCount =
+    // The group's total played-fixture count for this scope — Teilnahmen%'s
+    // denominator for scope=season (not a hardcoded assumed season length,
+    // feature-plan-stats-enhancements follow-up 2026-09-16), and, as of the
+    // 2026-09-16 (v5) fix, also Quote/Niederlagenquote's denominator in
+    // *both* scopes: a player's win/loss % is judged against how many
+    // games the group has actually played (this season, or ever), not
+    // just how many of those games that one player happened to be in.
+    const groupPlayedGames =
       scope === 'season' && seasonId !== undefined
         ? (
             await req.payload.count({
@@ -142,8 +145,16 @@ export const statsEndpoint: Endpoint = {
               overrideAccess: true,
             })
           ).totalDocs
-        : undefined;
-    const { rows, podium } = rankPlayersByMetric(allRows, metric, scope, seasonFixtureCount);
+        : scope === 'alltime'
+          ? (
+              await req.payload.count({
+                collection: 'fixtures',
+                where: { group: { equals: groupId }, status: { equals: 'played' } },
+                overrideAccess: true,
+              })
+            ).totalDocs
+          : undefined;
+    const { rows, podium } = rankPlayersByMetric(allRows, metric, scope, groupPlayedGames);
     const records = scope === 'alltime' ? computeAllTimeRecords(allRows) : undefined;
 
     return Response.json({ scope, metric, rows, podium, seasonId, records }, { status: 200 });

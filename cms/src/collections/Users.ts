@@ -164,6 +164,20 @@ export const Users: CollectionConfig = {
       defaultValue: () => new Date().toISOString(),
     },
     {
+      name: 'locale',
+      type: 'select',
+      options: [
+        { label: 'Deutsch', value: 'de' },
+        { label: 'English', value: 'en' },
+      ],
+      admin: {
+        description:
+          "The app's own display language for this account (feature-plan-i18n-localization.md) — " +
+          'purely a client-side preference, no effect on anything the backend generates. Left unset ' +
+          "until the user picks one; the app falls back to the device's language (or German) until then.",
+      },
+    },
+    {
       name: 'avatarSeed',
       type: 'text',
       admin: { description: 'Optional — for a consistent avatar gradient in the app.' },

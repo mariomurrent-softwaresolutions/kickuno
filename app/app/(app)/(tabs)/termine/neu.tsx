@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
@@ -10,12 +11,8 @@ import * as api from '@/lib/api';
 import { ApiError } from '@/lib/api';
 import { colors } from '@/theme/tokens';
 
-const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
-// German weekday plurals are irregular (Mittwoch -> Mittwoche, not
-// "Mittwoche" via a simple "-tag"->"-tage" rule) — spelled out in full
-// rather than derived, indexed the same as WEEKDAYS/getUTCDay().
-const WEEKDAY_PLURAL = ['Sonntage', 'Montage', 'Dienstage', 'Mittwoche', 'Donnerstage', 'Freitage', 'Samstage'];
-const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
 const TIME_OPTIONS = ['19:00', '19:30', '20:00', '20:30', '21:00'];
 
 /**
@@ -54,6 +51,8 @@ function nextNDays(count = 28): Date[] {
  * server-side either way — §3.4).
  */
 export default function NeuerTerminScreen() {
+  const { t } = useTranslation('neuerTermin');
+  const { t: tCommon } = useTranslation('common');
   const { group } = useAuth();
   const queryClient = useQueryClient();
   const weekday = group?.defaultGameDay ?? 4;
@@ -92,7 +91,7 @@ export default function NeuerTerminScreen() {
       await queryClient.invalidateQueries({ queryKey: ['fixtures', group.id] });
       router.back();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Etwas ist schiefgelaufen.');
+      setError(e instanceof ApiError ? e.message : tCommon('errors.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -100,14 +99,14 @@ export default function NeuerTerminScreen() {
 
   return (
     <ScrollView className="flex-1 bg-bg-screen" contentContainerStyle={{ paddingBottom: 40 }}>
-      <ScreenHeader eyebrow="ANLEGEN" title="Neuer Termin" onBack={() => router.back()} />
+      <ScreenHeader eyebrow={t('eyebrow')} title={t('title')} onBack={() => router.back()} />
       <VStack className="gap-6 px-5 pt-4">
         <VStack className="gap-2">
           <HStack className="items-center justify-between">
-            <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Datum</Text>
+            <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('date.label')}</Text>
             <Pressable onPress={() => setCustomMode((v) => !v)}>
               <Text className="font-body-semibold text-muted-soft" style={{ fontSize: 12.5 }}>
-                {customMode ? 'Vorgeschlagene Termine' : 'Anderes Datum wählen'}
+                {customMode ? t('date.showSuggested') : t('date.showCustom')}
               </Text>
             </Pressable>
           </HStack>
@@ -127,7 +126,7 @@ export default function NeuerTerminScreen() {
                     }}
                   >
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 13 }}>
-                      {WEEKDAYS[d.getUTCDay()]} {d.getUTCDate()}.{d.getUTCMonth() + 1}.
+                      {tCommon(`weekdaysAbbr.${WEEKDAY_KEYS[d.getUTCDay()]}`)} {d.getUTCDate()}.{d.getUTCMonth() + 1}.
                     </Text>
                   </Pressable>
                 );
@@ -148,7 +147,7 @@ export default function NeuerTerminScreen() {
                     }}
                   >
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
-                      {WEEKDAYS[d.getUTCDay()]}, {d.getUTCDate()}. {MONTHS[d.getUTCMonth()]}
+                      {tCommon(`weekdaysAbbr.${WEEKDAY_KEYS[d.getUTCDay()]}`)}, {d.getUTCDate()}. {tCommon(`monthsShort.${MONTH_KEYS[d.getUTCMonth()]}`)}
                     </Text>
                   </Pressable>
                 );
@@ -158,14 +157,14 @@ export default function NeuerTerminScreen() {
         </VStack>
 
         <VStack className="gap-2">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Uhrzeit</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('time.label')}</Text>
           <HStack className="flex-wrap gap-2">
-            {TIME_OPTIONS.map((t) => {
-              const active = t === time;
+            {TIME_OPTIONS.map((opt) => {
+              const active = opt === time;
               return (
                 <Pressable
-                  key={t}
-                  onPress={() => setTime(t)}
+                  key={opt}
+                  onPress={() => setTime(opt)}
                   className="rounded-full border px-4 py-2"
                   style={{
                     borderColor: active ? colors.green : colors.hairline,
@@ -173,7 +172,7 @@ export default function NeuerTerminScreen() {
                   }}
                 >
                   <Text className={active ? 'font-body-semibold text-ink' : 'font-body text-muted'} style={{ fontSize: 13.5 }}>
-                    {t}
+                    {opt}
                   </Text>
                 </Pressable>
               );
@@ -182,7 +181,7 @@ export default function NeuerTerminScreen() {
         </VStack>
 
         <VStack className="gap-2">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">Halle</Text>
+          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('hall.label')}</Text>
           {halls.data?.docs.length ? (
             <VStack className="gap-2">
               {halls.data.docs.map((h) => {
@@ -209,7 +208,7 @@ export default function NeuerTerminScreen() {
             <TextInput
               value={newHallName}
               onChangeText={setNewHallName}
-              placeholder="z.B. Halle Ost"
+              placeholder={t('hall.placeholder')}
               placeholderTextColor={colors.dim}
               className="rounded-[14px] border border-hairline bg-bg-card px-4 font-body-semibold text-ink"
               style={{ height: 50, fontSize: 15 }}
@@ -223,10 +222,12 @@ export default function NeuerTerminScreen() {
         >
           <VStack className="flex-1 gap-0.5 pr-3">
             <Text className="font-body-semibold text-ink" style={{ fontSize: 14.5 }}>
-              Wöchentlich wiederholen
+              {t('repeatWeekly.title')}
             </Text>
             <Text className="font-body text-muted" style={{ fontSize: 12 }}>
-              Legt die nächsten 8 {WEEKDAY_PLURAL[selectedDate.getUTCDay()]} an.
+              {t('repeatWeekly.description', {
+                weekdayPlural: tCommon(`weekdayPlural.${WEEKDAY_KEYS[selectedDate.getUTCDay()]}`),
+              })}
             </Text>
           </VStack>
           <RepeatToggle active={repeatWeekly} />
@@ -248,7 +249,7 @@ export default function NeuerTerminScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text className="font-body-bold text-white" style={{ fontSize: 17 }}>
-              Termin anlegen
+              {t('submit')}
             </Text>
           )}
         </Pressable>
