@@ -735,6 +735,8 @@ export type ApiPlayerProfile = {
   /** Most-recent-first, up to 5 entries. */
   form: ('S' | 'U' | 'N')[];
   season: {
+    /** Omitted only in the edge case where the group has no active season and none was requested. */
+    id?: string;
     label: string;
     played: number;
     wins: number;
@@ -756,13 +758,17 @@ export type ApiPlayerProfile = {
 };
 
 /**
- * `GET /api/players/:id/profile?group=&kind=` (phase 6) — replaces the old
- * `users`-scoped `/api/users/:id/profile`, which is gone now that a profile
- * can be either a real member or a `legacyPlayers` ghost profile (§3.7).
- * `kind` defaults to `'users'` so every existing call site (Statistik
- * before phase 6, "Mein Spielerprofil") keeps working unchanged.
+ * `GET /api/players/:id/profile?group=&kind=&season=` (phase 6, `season`
+ * param added with the per-season Spielerprofil support) — replaces the
+ * old `users`-scoped `/api/users/:id/profile`, which is gone now that a
+ * profile can be either a real member or a `legacyPlayers` ghost profile
+ * (§3.7). `kind` defaults to `'users'` so every existing call site
+ * (Statistik before phase 6, "Mein Spielerprofil") keeps working
+ * unchanged. `seasonId` is optional — omit it (as every call site did
+ * before this) to get whichever season is currently active, same as
+ * before.
  */
-export function getPlayerProfile(playerId: string, groupId: string, kind: ApiPlayerKind = 'users') {
-  const qs = query({ group: groupId, kind });
+export function getPlayerProfile(playerId: string, groupId: string, kind: ApiPlayerKind = 'users', seasonId?: string) {
+  const qs = query({ group: groupId, kind, season: seasonId });
   return request<ApiPlayerProfile>(`/api/players/${playerId}/profile${qs}`);
 }

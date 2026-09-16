@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth-context';
 import * as api from '@/lib/api';
 import type { ApiAllTimeRecords, ApiDuoStanding, ApiMatchExtreme, ApiSeasonSummary } from '@/lib/api';
@@ -33,6 +34,15 @@ import { colors } from '@/theme/tokens';
  * here rather than on Spielerprofil. It rides along on the same
  * `getStatsSummary()` response as `SeasonSummaryCard` (`bestDuos` is a
  * sibling field, scoped identically), so it needed no extra query.
+ *
+ * Each card has a `*Skeleton` counterpart shown while its query's
+ * `isLoading` is true (first load only — not `isFetching`, which would
+ * also flip true on every background refetch a scope/season switch
+ * triggers; `placeholderData` already keeps the previous scope's card on
+ * screen during those, so re-skeletonizing on every chip tap would be a
+ * regression, not a fix) — otherwise a card renders nothing until its
+ * query resolves and pops in unannounced, which read as "is this even
+ * loading?" rather than as a loading state.
  */
 export default function SaisonUebersichtScreen() {
   const { group } = useAuth();
@@ -122,9 +132,21 @@ export default function SaisonUebersichtScreen() {
           </ScrollView>
         )}
 
-        {summaryQuery.data ? <SeasonSummaryCard summary={summaryQuery.data.summary} /> : null}
-        {summaryQuery.data?.bestDuos.length ? <BesteDuosCard duos={summaryQuery.data.bestDuos} /> : null}
-        {scope === 'alltime' && allTimeRecordsQuery.data?.records ? (
+        {summaryQuery.isLoading ? (
+          <SeasonSummaryCardSkeleton />
+        ) : summaryQuery.data ? (
+          <SeasonSummaryCard summary={summaryQuery.data.summary} />
+        ) : null}
+
+        {summaryQuery.isLoading ? (
+          <BesteDuosCardSkeleton />
+        ) : summaryQuery.data?.bestDuos.length ? (
+          <BesteDuosCard duos={summaryQuery.data.bestDuos} />
+        ) : null}
+
+        {scope === 'alltime' && allTimeRecordsQuery.isLoading ? (
+          <HallOfFameCardSkeleton />
+        ) : scope === 'alltime' && allTimeRecordsQuery.data?.records ? (
           <HallOfFameCard records={allTimeRecordsQuery.data.records} />
         ) : null}
       </VStack>
@@ -185,6 +207,29 @@ function SeasonSummaryCard({ summary }: { summary: ApiSeasonSummary }) {
   );
 }
 
+/** Loading placeholder matching `SeasonSummaryCard`'s shape — see the screen's own doc comment for when this is shown. */
+function SeasonSummaryCardSkeleton() {
+  return (
+    <VStack className="gap-3 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
+      <HStack className="flex-wrap gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <VStack key={i} className="gap-1.5" style={{ minWidth: 64 }}>
+            <Skeleton width={36} height={20} />
+            <Skeleton width={56} height={10} />
+          </VStack>
+        ))}
+      </HStack>
+      <Skeleton height={38} radius={10} />
+      <VStack className="gap-2 border-t border-hairline pt-3">
+        <Skeleton width={64} height={10} />
+        <Skeleton height={15} />
+        <Skeleton height={15} />
+        <Skeleton height={15} />
+      </VStack>
+    </VStack>
+  );
+}
+
 function SummaryTile({ label, value }: { label: string; value: string }) {
   return (
     <VStack className="gap-0.5" style={{ minWidth: 64 }}>
@@ -224,6 +269,24 @@ function BesteDuosCard({ duos }: { duos: ApiDuoStanding[] }) {
           <Text className="font-heading text-gold" style={{ fontSize: 20 }}>
             {duo.winRate}%
           </Text>
+        </HStack>
+      ))}
+    </VStack>
+  );
+}
+
+/** Loading placeholder matching `BesteDuosCard`'s shape. */
+function BesteDuosCardSkeleton() {
+  return (
+    <VStack className="gap-2.5 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
+      <Skeleton width={80} height={10} />
+      {[0, 1, 2].map((i) => (
+        <HStack key={i} className="items-center justify-between">
+          <VStack className="flex-1 gap-1.5 pr-3">
+            <Skeleton width="65%" height={13} />
+            <Skeleton width="45%" height={11} />
+          </VStack>
+          <Skeleton width={32} height={18} />
         </HStack>
       ))}
     </VStack>
@@ -317,3 +380,22 @@ function HallOfFameCard({ records }: { records: ApiAllTimeRecords }) {
     </VStack>
   );
 }
+
+/** Loading placeholder matching `HallOfFameCard`'s shape. */
+function HallOfFameCardSkeleton() {
+  return (
+    <VStack className="gap-2.5 rounded-[14px] border border-hairline bg-bg-card px-4 py-4">
+      <Skeleton width={100} height={10} />
+      {[0, 1].map((i) => (
+        <HStack key={i} className="items-center justify-between">
+          <VStack className="flex-1 gap-1.5 pr-3">
+            <Skeleton width="55%" height={13} />
+            <Skeleton width="75%" height={11} />
+          </VStack>
+          <Skeleton width={28} height={20} />
+        </HStack>
+      ))}
+    </VStack>
+  );
+}
+

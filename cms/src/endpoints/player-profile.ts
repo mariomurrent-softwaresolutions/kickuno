@@ -92,25 +92,50 @@ export const playerProfileEndpoint: Endpoint = {
       claimed = Boolean(legacy.claimedBy);
     }
 
-    // Deliberately `getActiveSeason` (read-only), never
-    // `getOrCreateCurrentSeason` — viewing a Spielerprofil is a plain read,
-    // and letting it spawn a season as a side effect was the same bug
-    // class already fixed in `strength.ts` and `stats.ts` (see
-    // getting-started.md). When a group genuinely has no active season
-    // yet, this just reports zeroed-out season stats (same as any brand-
-    // new player would show) instead of creating one.
-    const activeSeason = await getActiveSeason(req.payload, groupId);
+    // `season=<id>` (optional) lets the app view any of the group's
+    // seasons, not just whichever is active — same "statistics for each
+    // season" support the Statistik screen's season picker already has
+    // (feature-plan-stats-enhancements.md context). Falls back to
+    // `getActiveSeason` (read-only, never `getOrCreateCurrentSeason` — see
+    // the note below) when no explicit `season` param is given, so every
+    // existing call site (Spielerprofil before this) keeps working
+    // unchanged.
+    const seasonParam = req.query?.season;
+    let season: { id: string | number } | null = null;
+    if (typeof seasonParam === 'string' || typeof seasonParam === 'number') {
+      const requested = await req.payload.findByID({
+        collection: 'seasons',
+        id: seasonParam,
+        depth: 0,
+        overrideAccess: true,
+      });
+      const requestedGroupId = requested && typeof requested.group === 'object' && requested.group !== null ? requested.group.id : requested?.group;
+      if (!requested || String(requestedGroupId) !== String(groupId)) {
+        return Response.json({ error: 'Season not found' }, { status: 404 });
+      }
+      season = requested;
+    } else {
+      // Deliberately `getActiveSeason` (read-only), never
+      // `getOrCreateCurrentSeason` — viewing a Spielerprofil is a plain
+      // read, and letting it spawn a season as a side effect was the same
+      // bug class already fixed in `strength.ts` and `stats.ts` (see
+      // getting-started.md). When a group genuinely has no active season
+      // yet, this just reports zeroed-out season stats (same as any
+      // brand-new player would show) instead of creating one.
+      season = await getActiveSeason(req.payload, groupId);
+    }
+
     const [seasonRows, allTimeRows] = await Promise.all([
-      activeSeason ? computeGroupPlayerStats(req.payload, groupId, activeSeason.id) : Promise.resolve([]),
+      season ? computeGroupPlayerStats(req.payload, groupId, season.id) : Promise.resolve([]),
       computeGroupPlayerStats(req.payload, groupId),
     ]);
     const seasonRow = seasonRows.find((r) => r.playerId === String(playerId) && r.playerKind === kind);
     const allTimeRow = allTimeRows.find((r) => r.playerId === String(playerId) && r.playerKind === kind);
 
-    const seasonDoc = activeSeason
+    const seasonDoc = season
       ? await req.payload.findByID({
           collection: 'seasons',
-          id: activeSeason.id,
+          id: season.id,
           depth: 0,
           overrideAccess: true,
         })
@@ -137,6 +162,7 @@ export const playerProfileEndpoint: Endpoint = {
         // meaningful right after a new season starts).
         form: allTimeRow ? last5Form(allTimeRow.matches) : [],
         season: {
+          id: seasonDoc ? String(seasonDoc.id) : undefined,
           label: seasonDoc?.label ?? '',
           played: seasonRow?.played ?? 0,
           wins: seasonRow?.wins ?? 0,

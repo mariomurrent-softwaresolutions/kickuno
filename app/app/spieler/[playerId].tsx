@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { Box, HStack, Text, VStack } from '@/components/ui/primitives';
+import { Box, HStack, Pressable, Text, VStack } from '@/components/ui/primitives';
 import { ScreenHeader } from '@/components/ui/screen-header';
 import { StatTile } from '@/components/ui/stat-tile';
 import { useAuth } from '@/lib/auth-context';
@@ -51,10 +51,27 @@ export default function SpielerprofilScreen() {
   const kind: ApiPlayerKind = isPlayerKind(kindParam) ? kindParam : 'users';
   const { group } = useAuth();
 
+  // `null` means "no explicit choice yet — use whichever season is
+  // active", same convention as the Statistik screen's own season picker
+  // (feature-plan-stats-enhancements.md context) — kept independent state
+  // here rather than shared, since a profile can be opened straight from
+  // several different screens with no season context to inherit.
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+
+  const seasonsQuery = useQuery({
+    queryKey: ['seasons', group?.id],
+    queryFn: () => api.getSeasons(group!.id),
+    enabled: Boolean(group),
+  });
+  const seasons = seasonsQuery.data?.docs ?? [];
+  const activeSeason = seasons.find((s) => s.status === 'active') ?? null;
+  const effectiveSeasonId = selectedSeasonId ?? activeSeason?.id;
+
   const profileQuery = useQuery({
-    queryKey: ['player-profile', playerId, kind, group?.id],
-    queryFn: () => api.getPlayerProfile(playerId, group!.id, kind),
+    queryKey: ['player-profile', playerId, kind, group?.id, effectiveSeasonId],
+    queryFn: () => api.getPlayerProfile(playerId, group!.id, kind, effectiveSeasonId),
     enabled: Boolean(playerId) && Boolean(group),
+    placeholderData: (previousData) => previousData,
   });
 
   const profile = profileQuery.data;
@@ -65,7 +82,7 @@ export default function SpielerprofilScreen() {
   async function handleRefresh() {
     setIsRefreshing(true);
     try {
-      await profileQuery.refetch();
+      await Promise.all([profileQuery.refetch(), seasonsQuery.refetch()]);
     } finally {
       setIsRefreshing(false);
     }
@@ -179,9 +196,42 @@ export default function SpielerprofilScreen() {
         </VStack>
 
         <VStack className="gap-2.5">
-          <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
-            Saison {profile.season.label}
-          </Text>
+          <HStack className="items-center justify-between">
+            <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">
+              Saison {profile.season.label}
+            </Text>
+          </HStack>
+          {seasons.length > 1 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+            >
+              {seasons.map((s) => {
+                const active = s.id === effectiveSeasonId;
+                return (
+                  <Pressable
+                    key={s.id}
+                    onPress={() => setSelectedSeasonId(s.id)}
+                    className="rounded-full border px-4 py-2"
+                    style={{
+                      borderColor: active ? colors.green : colors.hairline,
+                      backgroundColor: active ? 'rgba(47,191,110,0.12)' : colors.bgCard,
+                    }}
+                  >
+                    <HStack className="items-center gap-1.5">
+                      <Text className="font-body-semibold" style={{ fontSize: 13, color: active ? colors.green : colors.ink }}>
+                        {s.label}
+                      </Text>
+                      {s.status === 'active' ? (
+                        <Box style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.green }} />
+                      ) : null}
+                    </HStack>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
           <HStack className="gap-2.5">
             <StatTile label="Spiele" value={String(profile.season.played)} />
             <StatTile label="Tore" value={String(profile.season.goals)} valueColor={colors.gold} />
