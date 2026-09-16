@@ -379,9 +379,9 @@ export const Fixtures: CollectionConfig = {
           // handled by the validation below
         }
         const playerId = typeof body.playerId === 'string' || typeof body.playerId === 'number' ? body.playerId : undefined;
-        const team = body.team === 'red' || body.team === 'green' || body.team === null ? body.team : undefined;
+        const team = body.team === 'red' || body.team === 'green' || body.team === null || body.team === 'none' ? body.team : undefined;
         if (playerId === undefined || team === undefined) {
-          return Response.json({ error: 'playerId and team ("red" | "green" | null) are required' }, { status: 400 });
+          return Response.json({ error: 'playerId and team ("red" | "green" | "none" | null) are required' }, { status: 400 });
         }
 
         const fixture = await req.payload.findByID({
@@ -406,7 +406,48 @@ export const Fixtures: CollectionConfig = {
         const eligibleIds = await eligiblePlayerIds(req.payload, groupId, fixtureId, rsvpEnabled);
         let finalEligibleIds = eligibleIds;
 
-        if (!eligibleIds.map(String).includes(String(playerId))) {
+        if (team === 'none') {
+          // Move an assigned (or pooled) player straight to "Nicht dabei" —
+          // requested after an "accidentally assigned the wrong player"
+          // report: previously the only way off a team was `team: null`
+          // (back to the pool), with no way to mark them not attending at
+          // all. Only meaningful when `features.rsvp` is on: with it off,
+          // `eligiblePlayerIds()` returns every member regardless of RSVP,
+          // so declining here wouldn't actually remove them from the pool
+          // on the next fetch — the app hides this action entirely in that
+          // case, and the endpoint rejects it too so a direct API call
+          // can't produce that inconsistent state either.
+          if (!rsvpEnabled) {
+            return Response.json({ error: 'Nicht dabei ist nur bei aktivierter Zusagen-Funktion möglich.' }, { status: 400 });
+          }
+          const memberIds = await allGroupMemberIds(req.payload, groupId);
+          if (!memberIds.map(String).includes(String(playerId))) {
+            return Response.json({ error: 'Player is not a member of this group' }, { status: 400 });
+          }
+
+          const existingRsvp = await req.payload.find({
+            collection: 'rsvps',
+            where: { fixture: { equals: fixtureId }, user: { equals: playerId } },
+            limit: 1,
+            overrideAccess: true,
+          });
+          const respondedAt = new Date().toISOString();
+          if (existingRsvp.docs[0]) {
+            await req.payload.update({
+              collection: 'rsvps',
+              id: existingRsvp.docs[0].id,
+              data: { status: 'no', respondedAt },
+              overrideAccess: true,
+            });
+          } else {
+            await req.payload.create({
+              collection: 'rsvps',
+              data: { fixture: fixtureId, user: playerId, status: 'no', respondedAt },
+              overrideAccess: true,
+            });
+          }
+          finalEligibleIds = eligibleIds.filter((id) => String(id) !== String(playerId));
+        } else if (!eligibleIds.map(String).includes(String(playerId))) {
           // Not currently "confirmed" (only reachable when `features.rsvp`
           // is on — with it off, `eligiblePlayerIds()` already returns
           // every member). This is the app's "Nicht dabei" list (§4.5):
@@ -669,8 +710,17 @@ export const Fixtures: CollectionConfig = {
         if (redScore === undefined || greenScore === undefined) {
           return Response.json({ error: 'redScore and greenScore are required' }, { status: 400 });
         }
-        const redOwnGoals = typeof body.redOwnGoals === 'number' ? body.redOwnGoals : 0;
-        const greenOwnGoals = typeof body.greenOwnGoals === 'number' ? body.greenOwnGoals : 0;
+        // §C (own-goal attribution): `redOwnGoals`/`greenOwnGoals` on the
+        // request body now carry only the *unattributed* remainder — own
+        // goals with no known scorer, entered via the app's "Sonstiges
+        // Eigentor" fallback stepper — not the full per-team total anymore.
+        // The attributed portion comes from `goals[]` entries with
+        // `isOwnGoal: true`, summed below and added on top before storing,
+        // so `matchResults.redOwnGoals`/`greenOwnGoals` stay the full total
+        // either way (nothing downstream — score display, `stats.ts` — has
+        // to know or care which bucket a given own goal came from).
+        const redOwnGoalsUnattributed = typeof body.redOwnGoals === 'number' ? body.redOwnGoals : 0;
+        const greenOwnGoalsUnattributed = typeof body.greenOwnGoals === 'number' ? body.greenOwnGoals : 0;
         const mvp = typeof body.mvp === 'string' || typeof body.mvp === 'number' ? body.mvp : undefined;
         const goals = Array.isArray(body.goals)
           ? body.goals
@@ -681,8 +731,17 @@ export const Fixtures: CollectionConfig = {
                 player: polyRef('users', g.player as string | number),
                 team: g.team === 'red' || g.team === 'green' ? g.team : 'red',
                 count: typeof g.count === 'number' ? g.count : 1,
+                isOwnGoal: g.isOwnGoal === true,
               }))
           : [];
+        const attributedRedOwnGoals = goals
+          .filter((g) => g.team === 'red' && g.isOwnGoal)
+          .reduce((sum, g) => sum + g.count, 0);
+        const attributedGreenOwnGoals = goals
+          .filter((g) => g.team === 'green' && g.isOwnGoal)
+          .reduce((sum, g) => sum + g.count, 0);
+        const redOwnGoals = redOwnGoalsUnattributed + attributedRedOwnGoals;
+        const greenOwnGoals = greenOwnGoalsUnattributed + attributedGreenOwnGoals;
 
         const fixture = await req.payload.findByID({ collection: 'fixtures', id: fixtureId, depth: 1, overrideAccess: true });
         if (!fixture) {

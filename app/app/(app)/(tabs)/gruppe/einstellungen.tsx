@@ -25,6 +25,7 @@ const FLAGS: { key: FlagKey; label: string; hint: string }[] = [
   { key: 'rsvp', label: 'Zusagen (RSVP)', hint: 'Bin dabei / Kann nicht auf dem nächsten Termin.' },
   { key: 'autoBalance', label: 'Auto-Aufstellung', hint: 'Automatische Teamverteilung nach Stärke/Toren.' },
   { key: 'strength', label: 'Stärke', hint: 'Stärke-Wert auf Profilen, Chips und der Balance-Anzeige.' },
+  { key: 'mvp', label: 'MVP', hint: 'MVP-Auswahl beim Ergebnis erfassen sowie MVP-Statistik und -Profilwerte. Standardmäßig aus.' },
 ];
 
 /**

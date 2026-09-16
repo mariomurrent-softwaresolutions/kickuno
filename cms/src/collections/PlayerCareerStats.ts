@@ -39,7 +39,7 @@ export const PlayerCareerStats: CollectionConfig = {
       name: 'matchOwnGoals',
       type: 'number',
       defaultValue: 0,
-      admin: { description: 'Always 0 for now — matchResults records own goals at the team level only, not per player. See stats.ts.' },
+      admin: { description: 'Own goals attributed to this player specifically (matchResults.goals[] entries with isOwnGoal: true). Own goals with no known scorer are tracked at the team level only (matchResults.redOwnGoals/greenOwnGoals) and are not included here. See stats.ts.' },
     },
     { name: 'matchMvps', type: 'number', defaultValue: 0 },
     { name: 'matchGoalDiff', type: 'number', defaultValue: 0 },

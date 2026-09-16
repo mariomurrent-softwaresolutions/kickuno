@@ -26,7 +26,7 @@ export type PlayerStatsRow = {
   draws: number;
   losses: number;
   goals: number;
-  /** Always 0 for now — matchResults has no per-player own-goal attribution. See stats.ts. */
+  /** Own goals attributed to this player specifically (matchResults.goals[] entries with isOwnGoal: true), plus baselineOwnGoals for the all-time view. Own goals with no known scorer live only in matchResults.redOwnGoals/greenOwnGoals and aren't reflected here. */
   ownGoals: number;
   mvps: number;
   goalDiff: number;
@@ -176,13 +176,19 @@ export async function computeGroupPlayerStats(
       const mvpKind = polyKind(result.mvp);
 
       const goalsByKey = new Map<string, number>();
+      const ownGoalsByKey = new Map<string, number>();
       if (Array.isArray(result.goals)) {
         for (const g of result.goals as Array<Record<string, unknown>>) {
           const pid = polyId(g.player);
           const pkind = polyKind(g.player);
           if (pid === undefined || !pkind) continue;
           const k = key(pid, pkind);
-          goalsByKey.set(k, (goalsByKey.get(k) ?? 0) + (typeof g.count === 'number' ? g.count : 0));
+          const count = typeof g.count === 'number' ? g.count : 0;
+          if (g.isOwnGoal === true) {
+            ownGoalsByKey.set(k, (ownGoalsByKey.get(k) ?? 0) + count);
+          } else {
+            goalsByKey.set(k, (goalsByKey.get(k) ?? 0) + count);
+          }
         }
       }
 
@@ -205,6 +211,7 @@ export async function computeGroupPlayerStats(
         else if (outcome === 'draw') row.draws += 1;
         else row.losses += 1;
         row.goals += goals;
+        row.ownGoals += ownGoalsByKey.get(k) ?? 0;
         if (isMvp) row.mvps += 1;
         row.goalDiff += diff;
         row.matches.push({ fixtureId, date, outcome, goals, mvp: isMvp, goalDiff: diff });
@@ -268,12 +275,50 @@ export function last5Form(matches: PlayerMatchRecord[]): ('S' | 'U' | 'N')[] {
 export type MetricKey = 'tore' | 'quote' | 'siege' | 'teilnahmen' | 'diff' | 'streak' | 'mvp' | 'eigen';
 export const METRIC_KEYS: MetricKey[] = ['tore', 'quote', 'siege', 'teilnahmen', 'diff', 'streak', 'mvp', 'eigen'];
 
-function metricValue(row: PlayerStatsRow, metric: MetricKey): number {
+/**
+ * Games-played weight for `quote`'s shrinkage prior below — same threshold
+ * `computeBestDuos()` already uses as its min-games floor, reused here as
+ * "how many games' worth of the group average to blend in" rather than a
+ * hard cutoff, per the 2026-09-16 stats-correctness follow-up.
+ */
+const QUOTE_SHRINKAGE_GAMES = 3;
+
+/**
+ * Pooled (games-weighted) win rate across every row that's actually played
+ * at least once — the "prior" `metricValue`'s `quote` case shrinks toward,
+ * so a single lucky win at 1 game doesn't read as a flat 100% and outrank
+ * someone with a genuinely strong record over many games. 0 when nobody in
+ * scope has played yet.
+ */
+function computeGroupMeanWinRate(rows: PlayerStatsRow[]): number {
+  let winsSum = 0;
+  let playedSum = 0;
+  for (const row of rows) {
+    winsSum += row.wins;
+    playedSum += row.played;
+  }
+  return playedSum > 0 ? winsSum / playedSum : 0;
+}
+
+function metricValue(row: PlayerStatsRow, metric: MetricKey, groupMeanWinRate?: number): number {
   switch (metric) {
     case 'tore':
       return row.goals;
-    case 'quote':
-      return Math.round((row.wins / Math.max(1, row.played)) * 100);
+    case 'quote': {
+      // Fixed 2026-09-16: shrunk toward the group's pooled win rate,
+      // weighted by `QUOTE_SHRINKAGE_GAMES` "phantom games" at that group
+      // rate — a player who's played 0 games still shows 0% (there's
+      // nothing to shrink), but from game 1 onward their displayed % pulls
+      // toward the group average in proportion to how few games they've
+      // played, and converges to their real win rate as `played` grows past
+      // `QUOTE_SHRINKAGE_GAMES`. Previously a flat `wins/played`, which let
+      // a 1-game 100% sit at the top of the leaderboard above players with
+      // a real, many-game record.
+      if (row.played === 0) return 0;
+      const prior = groupMeanWinRate ?? row.wins / row.played;
+      const shrunk = (row.wins + QUOTE_SHRINKAGE_GAMES * prior) / (row.played + QUOTE_SHRINKAGE_GAMES);
+      return Math.round(shrunk * 100);
+    }
     case 'siege':
       return row.wins;
     case 'teilnahmen':
@@ -301,23 +346,33 @@ function metricValueLabel(metric: MetricKey, value: number): string {
   return String(value);
 }
 
-function metricSub(row: PlayerStatsRow, metric: MetricKey, scope: 'season' | 'alltime'): string {
+function metricSub(
+  row: PlayerStatsRow,
+  metric: MetricKey,
+  scope: 'season' | 'alltime',
+  seasonFixtureCount?: number,
+): string {
   const memberSinceYear = row.memberSince ? new Date(row.memberSince).getUTCFullYear() : undefined;
   switch (metric) {
     case 'tore':
       return `${row.played} Spiele`;
     case 'quote':
-      return `${row.wins} Siege`;
+      // Now that the ranked % is shrunk (see `metricValue`'s `quote` case),
+      // it no longer equals a literal `wins/played`, so the sub-label spells
+      // out both raw numbers rather than just the win count.
+      return `${row.wins} von ${row.played} Siege`;
     case 'siege':
       return scope === 'season' ? `${row.wins}S · ${row.draws}U · ${row.losses}N` : `${row.played} Spiele`;
     case 'teilnahmen':
       return scope === 'season'
-        ? // §6: 18 is the assumed season length, straight from support.js's
-          // own `Math.round((p.s.sp / 18) * 100)` — not derived from the
-          // group's actual fixture count. A group with a very different
-          // season length will get a skewed percentage here; revisit if
-          // that turns out to matter in practice.
-          `${Math.round((row.played / 18) * 100)}% der Termine`
+        ? // Fixed 2026-09-16: denominator is now the season's actual count
+          // of played fixtures (the caller already has it on hand from the
+          // same fixture fetch `computeGroupPlayerStats` performs), not a
+          // hardcoded assumed season length inherited from support.js's own
+          // `Math.round((p.s.sp / 18) * 100)`. Falling back to 18 only if a
+          // caller genuinely can't supply a count (defensive; the `/stats`
+          // endpoint always does).
+          `${Math.round((row.played / Math.max(1, seasonFixtureCount ?? 18)) * 100)}% der Termine`
         : row.playerKind === 'legacyPlayers'
           ? 'ehemaliges Mitglied'
           : memberSinceYear
@@ -372,8 +427,11 @@ export function rankPlayersByMetric(
   rows: PlayerStatsRow[],
   metric: MetricKey,
   scope: 'season' | 'alltime',
+  /** Season's actual played-fixture count — only meaningful (and only used) for the `teilnahmen` sub-label when `scope === 'season'`. */
+  seasonFixtureCount?: number,
 ): { rows: RankedRow[]; podium: PodiumEntry[] } {
-  const withValues = rows.map((row) => ({ row, value: metricValue(row, metric) }));
+  const groupMeanWinRate = metric === 'quote' ? computeGroupMeanWinRate(rows) : undefined;
+  const withValues = rows.map((row) => ({ row, value: metricValue(row, metric, groupMeanWinRate) }));
   withValues.sort((a, b) => b.value - a.value);
   const maxValue = Math.max(1, withValues[0]?.value ?? 0);
 
@@ -386,7 +444,7 @@ export function rankPlayersByMetric(
     position: row.position,
     value,
     valueLabel: metricValueLabel(metric, value),
-    sub: metricSub(row, metric, scope),
+    sub: metricSub(row, metric, scope, seasonFixtureCount),
     pct: Math.round((value / maxValue) * 100),
   }));
 
@@ -500,8 +558,10 @@ export async function computeSeasonSummary(
     }),
   ]);
 
-  if (results.length === 0) return EMPTY_SEASON_SUMMARY;
-
+  // Deliberately no early-return on `results.length === 0` here anymore —
+  // `fixtures.length` (the Spieltage count, see below) can be > 0 while
+  // `results` is momentarily empty/short, and the summary should still
+  // report the correct Spieltage rather than looking empty.
   const lineupByFixture = new Map(
     lineups.map((l) => [String(typeof l.fixture === 'object' && l.fixture !== null ? l.fixture.id : l.fixture), l]),
   );
@@ -565,11 +625,19 @@ export async function computeSeasonSummary(
     }
   }
 
-  const playedCount = results.length;
+  // Fixed 2026-09-16: Spieltage is the count of fixtures actually marked
+  // "played" in scope, not merely the ones with a saved matchResult
+  // (`results.length`). In practice a fixture's status only ever flips to
+  // 'played' in the same step that creates its matchResults row (see
+  // Fixtures.ts's `/:id/result` handler and the importer), so these two
+  // counts should always agree — but deriving Spieltage from `fixtures`
+  // instead keeps it correct even if that invariant is ever violated (e.g.
+  // a matchResults row removed directly after the fact).
+  const playedCount = fixtures.length;
   return {
     playedCount,
     totalGoals,
-    avgGoalsPerMatch: Math.round((totalGoals / playedCount) * 10) / 10,
+    avgGoalsPerMatch: playedCount > 0 ? Math.round((totalGoals / playedCount) * 10) / 10 : 0,
     avgAttendance: attendanceCount > 0 ? Math.round((attendanceSum / attendanceCount) * 10) / 10 : 0,
     red,
     green,

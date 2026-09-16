@@ -5,9 +5,11 @@ export type GroupFeatures = {
   rsvp: boolean;
   autoBalance: boolean;
   strength: boolean;
+  /** Off by default, unlike the other three — see `Groups.ts`'s `features.mvp` field. */
+  mvp: boolean;
 };
 
-const DEFAULT_FEATURES: GroupFeatures = { rsvp: true, autoBalance: true, strength: true };
+const DEFAULT_FEATURES: GroupFeatures = { rsvp: true, autoBalance: true, strength: true, mvp: false };
 
 const FeaturesContext = createContext<GroupFeatures>(DEFAULT_FEATURES);
 

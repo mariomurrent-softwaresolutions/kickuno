@@ -137,7 +137,7 @@ export type ApiUser = {
 /** Which collection a player id refers to — `users` (a real member) or `legacyPlayers` (an imported "ghost" profile, §3.7, phase 6). Every player-shaped id in the app is now paired with one of these. */
 export type ApiPlayerKind = 'users' | 'legacyPlayers';
 
-export type ApiGroupFeatures = { rsvp: boolean; autoBalance: boolean; strength: boolean };
+export type ApiGroupFeatures = { rsvp: boolean; autoBalance: boolean; strength: boolean; mvp: boolean };
 
 export type ApiGroup = {
   id: string;
@@ -513,8 +513,8 @@ export type ApiLineup = {
 // `users` — a *live* result is always recorded against that fixture's own
 // lineup, which can never contain a `legacyPlayers` id (§3.7) — so no
 // `kind` is needed on these two types.
-export type ApiGoalEntry = { player: string | ApiUser; team: 'red' | 'green'; count: number };
-export type ApiGoalEntryInput = { player: string; team: 'red' | 'green'; count: number };
+export type ApiGoalEntry = { player: string | ApiUser; team: 'red' | 'green'; count: number; isOwnGoal?: boolean };
+export type ApiGoalEntryInput = { player: string; team: 'red' | 'green'; count: number; isOwnGoal?: boolean };
 
 export type ApiMatchResult = {
   id: string;
@@ -534,7 +534,7 @@ export function getLineup(fixtureId: string) {
   return request<ApiLineup>(`/api/fixtures/${fixtureId}/lineup`);
 }
 
-export function assignLineupPlayer(fixtureId: string, playerId: string, team: 'red' | 'green' | null) {
+export function assignLineupPlayer(fixtureId: string, playerId: string, team: 'red' | 'green' | 'none' | null) {
   return request<ApiLineup>(`/api/fixtures/${fixtureId}/lineup`, {
     method: 'PATCH',
     body: { playerId, team },

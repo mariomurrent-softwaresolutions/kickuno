@@ -350,6 +350,12 @@ export const Groups: CollectionConfig = {
         { name: 'rsvp', type: 'checkbox', defaultValue: true },
         { name: 'autoBalance', type: 'checkbox', defaultValue: true },
         { name: 'strength', type: 'checkbox', defaultValue: true },
+        {
+          name: 'mvp',
+          type: 'checkbox',
+          defaultValue: false,
+          admin: { description: 'Off by default (unlike the other three flags, which default on) — MVP picking/display is opt-in per group. Gates the Ergebnis-erfassen MVP picker, the Statistik MVP metric, and the MVP tiles on Spielerprofil.' },
+        },
       ],
     },
     // Custom display names for the two teams (not in the original plan) —

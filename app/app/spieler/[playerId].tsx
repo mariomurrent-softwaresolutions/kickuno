@@ -50,6 +50,7 @@ export default function SpielerprofilScreen() {
   const { playerId, kind: kindParam } = useLocalSearchParams<{ playerId: string; kind?: string }>();
   const kind: ApiPlayerKind = isPlayerKind(kindParam) ? kindParam : 'users';
   const { group } = useAuth();
+  const mvpEnabled = Boolean(group?.features.mvp);
 
   // `null` means "no explicit choice yet — use whichever season is
   // active", same convention as the Statistik screen's own season picker
@@ -247,7 +248,7 @@ export default function SpielerprofilScreen() {
               value={profile.season.goalDiff > 0 ? `+${profile.season.goalDiff}` : String(profile.season.goalDiff)}
               valueColor={goalDiffColor}
             />
-            <StatTile label="MVP" value={String(profile.season.mvps)} />
+            {mvpEnabled && <StatTile label="MVP" value={String(profile.season.mvps)} />}
           </HStack>
         </VStack>
 
@@ -259,7 +260,7 @@ export default function SpielerprofilScreen() {
               { label: 'Tore gesamt', value: String(profile.allTime.goals) },
               { label: 'Siege gesamt', value: String(profile.allTime.wins) },
               { label: 'Siegquote all-time', value: `${profile.allTime.quote}%` },
-              { label: 'MVP-Titel', value: String(profile.allTime.mvps) },
+              ...(mvpEnabled ? [{ label: 'MVP-Titel', value: String(profile.allTime.mvps) }] : []),
               { label: 'Eigentore', value: String(profile.allTime.ownGoals) },
             ].map((row, index, arr) => (
               <HStack

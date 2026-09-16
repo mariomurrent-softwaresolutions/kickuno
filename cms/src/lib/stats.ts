@@ -46,11 +46,14 @@ export type PlayerRef = { id: string | number; kind: PolyKind };
  * map keyed by `"<kind>:<id>"`, the same "bounded fetch + in-memory
  * reduce" shape `stats-query.ts` already uses.
  *
- * Deliberately NOT attributing own goals per player: `matchResults` only
- * records `redOwnGoals`/`greenOwnGoals` at the team level — nothing in the
- * schema says *which* player scored one — so `ownGoals`/`matchOwnGoals`
- * stay at 0 here. This is a documented simplification, not an oversight;
- * revisit it only if `matchResults.goals` grows an "own goal" entry kind.
+ * Own goals are attributed per player where known: a `goals[]` entry with
+ * `isOwnGoal: true` (feature-plan-seasons-and-multigroup.md §C) adds to
+ * that player's `ownGoals`/`matchOwnGoals` here, same shape as a regular
+ * goal entry. An own goal with no known scorer never appears in `goals[]`
+ * at all — it only ever shows up in `matchResults.redOwnGoals`/
+ * `greenOwnGoals` (the "Sonstiges Eigentor" fallback bucket) — so it
+ * correctly affects the match score without being credited to any specific
+ * player's stats.
  */
 export async function recomputeStatsForPlayers(
   payload: Payload,
@@ -119,13 +122,19 @@ export async function recomputeStatsForPlayers(
       const mvpKind = polyKind(result.mvp);
 
       const goalsByKey = new Map<string, number>();
+      const ownGoalsByKey = new Map<string, number>();
       if (Array.isArray(result.goals)) {
         for (const g of result.goals as Array<Record<string, unknown>>) {
           const pid = polyId(g.player);
           const pkind = polyKind(g.player);
           if (pid === undefined || !pkind) continue;
           const k = key(pid, pkind);
-          goalsByKey.set(k, (goalsByKey.get(k) ?? 0) + (typeof g.count === 'number' ? g.count : 0));
+          const count = typeof g.count === 'number' ? g.count : 0;
+          if (g.isOwnGoal === true) {
+            ownGoalsByKey.set(k, (ownGoalsByKey.get(k) ?? 0) + count);
+          } else {
+            goalsByKey.set(k, (goalsByKey.get(k) ?? 0) + count);
+          }
         }
       }
 
@@ -147,6 +156,7 @@ export async function recomputeStatsForPlayers(
           else if (outcome === 'draw') acc.draws += 1;
           else acc.losses += 1;
           acc.goals += goalsByKey.get(k) ?? 0;
+          acc.ownGoals += ownGoalsByKey.get(k) ?? 0;
           if (isMvp) acc.mvps += 1;
           acc.goalDiff += teamScore - oppScore;
         };

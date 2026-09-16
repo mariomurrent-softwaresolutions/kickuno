@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshControl, ScrollView } from 'react-native';
+import { Alert, RefreshControl, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -77,7 +77,7 @@ export default function TerminDetailScreen() {
   // lineup (already returned by `PATCH .../lineup` — no separate
   // invalidate+refetch needed).
   const assignMutation = useMutation({
-    mutationFn: ({ playerId, team }: { playerId: string; team: 'red' | 'green' | null }) =>
+    mutationFn: ({ playerId, team }: { playerId: string; team: 'red' | 'green' | 'none' | null }) =>
       api.assignLineupPlayer(fixtureId, playerId, team),
     onMutate: async ({ playerId, team }) => {
       await queryClient.cancelQueries({ queryKey: lineupKey });
@@ -90,14 +90,28 @@ export default function TerminDetailScreen() {
           const next = withoutPlayer(previous, playerId);
           if (team === 'red') next.red = [...next.red, player];
           else if (team === 'green') next.green = [...next.green, player];
+          // 'none' ("Nicht dabei") — declines the player's RSVP server-side
+          // (Fixtures.ts's PATCH .../lineup handler), so optimistically
+          // reflect that as an explicit "Abgesagt" row rather than
+          // guessing — `onSuccess` below reconciles with the server's own
+          // recomputed `notAttending` list either way.
+          else if (team === 'none') next.notAttending = [...next.notAttending, { ...player, rsvpStatus: 'no' as const }];
           else next.pool = [...next.pool, player];
           queryClient.setQueryData(lineupKey, next);
         }
       }
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(lineupKey, context.previous);
+      // Previously silent — a rejected assign (e.g. "Nicht dabei" while
+      // `features.rsvp` is off, or a stale server not yet aware of the
+      // `team: 'none'` action) just reverted the optimistic move with no
+      // feedback, which reads as "the button does nothing." Surfacing the
+      // server's own message at least makes a real failure visible instead
+      // of silently no-op'ing.
+      const message = err instanceof api.ApiError ? err.message : 'Aktion fehlgeschlagen.';
+      Alert.alert('Konnte nicht gespeichert werden', message);
     },
     onSuccess: (data) => {
       queryClient.setQueryData(lineupKey, data);
@@ -111,7 +125,7 @@ export default function TerminDetailScreen() {
     },
   });
 
-  function assign(playerId: string, team: 'red' | 'green' | null) {
+  function assign(playerId: string, team: 'red' | 'green' | 'none' | null) {
     assignMutation.mutate({ playerId, team });
   }
 
@@ -347,6 +361,18 @@ export default function TerminDetailScreen() {
                           {teamTwoName}
                         </Text>
                       </Pressable>
+                      {features.rsvp && (
+                        <Pressable
+                          onPress={() => assign(p.id, 'none')}
+                          disabled={busyPlayerId === p.id}
+                          className="rounded-[10px] px-3 py-1.5"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
+                        >
+                          <Text className="font-body-semibold text-muted" style={{ fontSize: 12 }}>
+                            Nicht dabei
+                          </Text>
+                        </Pressable>
+                      )}
                     </HStack>
                   )}
                 </HStack>

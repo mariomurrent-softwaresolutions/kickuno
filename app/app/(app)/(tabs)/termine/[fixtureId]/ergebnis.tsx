@@ -16,10 +16,15 @@ import { colors } from '@/theme/tokens';
  * the fixture's lineup (red/green), not from RSVPs — you can only score a
  * match for players who were actually assigned to a side.
  *
- * Own goals are tracked at the team level only (`redOwnGoals`/
- * `greenOwnGoals`) — the schema has no way to attribute one to a specific
- * player. See cms/src/lib/stats.ts's doc comment for why that's a
- * deliberate simplification, not an oversight.
+ * Own goals (feature-plan-seasons-and-multigroup.md §C) can now be
+ * attributed to a specific player via their own "Eigentor" stepper,
+ * alongside their regular "Tore" stepper — `ownGoalsByPlayer` here, mapped
+ * to `goals[]` entries with `isOwnGoal: true` on save. A per-team
+ * "Sonstiges Eigentor" stepper remains underneath each roster for own
+ * goals with no known scorer (kept as the team-level
+ * `redOwnGoals`/`greenOwnGoals` counters, same as before this feature) —
+ * intentionally coexisting with per-player attribution rather than forcing
+ * every own goal to name someone.
  */
 export default function ErgebnisScreen() {
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
@@ -28,6 +33,7 @@ export default function ErgebnisScreen() {
   const { group } = useAuth();
   const teamOneName = group?.teamOneName ?? 'Rot';
   const teamTwoName = group?.teamTwoName ?? 'Grün';
+  const mvpEnabled = Boolean(group?.features.mvp);
 
   const lineupQuery = useQuery({
     queryKey: ['lineup', fixtureId],
@@ -41,6 +47,12 @@ export default function ErgebnisScreen() {
   });
 
   const [goalsByPlayer, setGoalsByPlayer] = useState<Record<string, number>>({});
+  const [ownGoalsByPlayer, setOwnGoalsByPlayer] = useState<Record<string, number>>({});
+  // Unattributed remainder only — "Sonstiges Eigentor" (own goal, unknown
+  // scorer). The *total* own goals per team sent to/from the server also
+  // folds in whatever's attributed via `ownGoalsByPlayer` above; see
+  // `redOwnGoalsTotal`/`greenOwnGoalsTotal` below and this screen's header
+  // comment.
   const [redOwnGoals, setRedOwnGoals] = useState(0);
   const [greenOwnGoals, setGreenOwnGoals] = useState(0);
   const [mvpId, setMvpId] = useState<string | null>(null);
@@ -54,14 +66,33 @@ export default function ErgebnisScreen() {
 
   useEffect(() => {
     if (!existing || prefilled) return;
-    const next: Record<string, number> = {};
+    const nextGoals: Record<string, number> = {};
+    const nextOwnGoals: Record<string, number> = {};
     for (const g of existing.goals) {
       const pid = typeof g.player === 'object' && g.player !== null ? g.player.id : g.player;
-      next[pid] = (next[pid] ?? 0) + g.count;
+      if (g.isOwnGoal) {
+        nextOwnGoals[pid] = (nextOwnGoals[pid] ?? 0) + g.count;
+      } else {
+        nextGoals[pid] = (nextGoals[pid] ?? 0) + g.count;
+      }
     }
-    setGoalsByPlayer(next);
-    setRedOwnGoals(existing.redOwnGoals ?? 0);
-    setGreenOwnGoals(existing.greenOwnGoals ?? 0);
+    setGoalsByPlayer(nextGoals);
+    setOwnGoalsByPlayer(nextOwnGoals);
+    // `existing.redOwnGoals`/`greenOwnGoals` are the stored *totals*
+    // (attributed + unattributed, per Fixtures.ts's POST handler) — back
+    // out the attributed portion (from the own-goal `goals[]` entries
+    // above, split by their own `team` tag) so the "Sonstiges Eigentor"
+    // stepper below shows only the unattributed remainder, not a
+    // double-count.
+    let attributedRedFromGoals = 0;
+    let attributedGreenFromGoals = 0;
+    for (const g of existing.goals) {
+      if (!g.isOwnGoal) continue;
+      if (g.team === 'red') attributedRedFromGoals += g.count;
+      else attributedGreenFromGoals += g.count;
+    }
+    setRedOwnGoals(Math.max(0, (existing.redOwnGoals ?? 0) - attributedRedFromGoals));
+    setGreenOwnGoals(Math.max(0, (existing.greenOwnGoals ?? 0) - attributedGreenFromGoals));
     const mvpVal = existing.mvp;
     setMvpId(typeof mvpVal === 'object' && mvpVal !== null ? mvpVal.id : (mvpVal ?? null));
     setPrefilled(true);
@@ -69,34 +100,60 @@ export default function ErgebnisScreen() {
 
   const red = lineupQuery.data?.red ?? [];
   const green = lineupQuery.data?.green ?? [];
+  const redIds = new Set(red.map((p) => p.id));
 
   const redGoalsTotal = red.reduce((sum, p) => sum + (goalsByPlayer[p.id] ?? 0), 0);
   const greenGoalsTotal = green.reduce((sum, p) => sum + (goalsByPlayer[p.id] ?? 0), 0);
-  const redScore = redGoalsTotal + greenOwnGoals;
-  const greenScore = greenGoalsTotal + redOwnGoals;
+  // Total own goals per team = attributed (per-player, this team's own
+  // players) + unattributed ("Sonstiges Eigentor" stepper for this team).
+  const attributedRedOwnGoals = red.reduce((sum, p) => sum + (ownGoalsByPlayer[p.id] ?? 0), 0);
+  const attributedGreenOwnGoals = green.reduce((sum, p) => sum + (ownGoalsByPlayer[p.id] ?? 0), 0);
+  const redOwnGoalsTotal = redOwnGoals + attributedRedOwnGoals;
+  const greenOwnGoalsTotal = greenOwnGoals + attributedGreenOwnGoals;
+  // An own goal by a red player benefits green, and vice versa.
+  const redScore = redGoalsTotal + greenOwnGoalsTotal;
+  const greenScore = greenGoalsTotal + redOwnGoalsTotal;
 
   function setPlayerGoals(playerId: string, value: number) {
     setGoalsByPlayer((prev) => ({ ...prev, [playerId]: value }));
   }
 
+  function setPlayerOwnGoals(playerId: string, value: number) {
+    setOwnGoalsByPlayer((prev) => ({ ...prev, [playerId]: value }));
+  }
+
   async function save() {
     setSaving(true);
     try {
-      const redIds = new Set(red.map((p) => p.id));
-      const goals = [...red, ...green]
+      const goalEntries = [...red, ...green]
         .filter((p) => (goalsByPlayer[p.id] ?? 0) > 0)
         .map((p) => ({
           player: p.id,
           team: (redIds.has(p.id) ? 'red' : 'green') as 'red' | 'green',
           count: goalsByPlayer[p.id] ?? 0,
         }));
+      // A player can have both a regular-goal entry and a separate
+      // own-goal entry in the same match — two entries, not merged.
+      const ownGoalEntries = [...red, ...green]
+        .filter((p) => (ownGoalsByPlayer[p.id] ?? 0) > 0)
+        .map((p) => ({
+          player: p.id,
+          team: (redIds.has(p.id) ? 'red' : 'green') as 'red' | 'green',
+          count: ownGoalsByPlayer[p.id] ?? 0,
+          isOwnGoal: true,
+        }));
       await api.saveResult(fixtureId, {
         redScore,
         greenScore,
+        // Unattributed remainder only — the server adds the attributed
+        // (`isOwnGoal: true`) sums from `goals` on top before storing the
+        // total. See Fixtures.ts's `/:id/result` POST handler.
         redOwnGoals,
         greenOwnGoals,
-        mvp: mvpId ?? undefined,
-        goals,
+        // Omitted when `features.mvp` is off — the picker below never gets shown to set
+        // one, but this also guards a stale `mvpId` from a moment the flag was on.
+        mvp: mvpEnabled ? (mvpId ?? undefined) : undefined,
+        goals: [...goalEntries, ...ownGoalEntries],
       });
       // Saving a result recomputes playerSeasonStats/playerCareerStats (and,
       // if features.strength is on, suggestedStrength) server-side — none
@@ -161,19 +218,32 @@ export default function ErgebnisScreen() {
               </Text>
               <VStack className="gap-2">
                 {red.map((p) => (
-                  <HStack
+                  <VStack
                     key={p.id}
-                    className="items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-3 py-2.5"
+                    className="gap-2 rounded-[14px] border border-hairline bg-bg-card px-3 py-2.5"
                   >
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 13.5 }}>
                       {p.name}
                     </Text>
-                    <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
-                  </HStack>
+                    <HStack className="items-center justify-between">
+                      <HStack className="items-center gap-2">
+                        <Text className="font-body text-muted" style={{ fontSize: 11 }}>
+                          Tore
+                        </Text>
+                        <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
+                      </HStack>
+                      <HStack className="items-center gap-2">
+                        <Text className="font-body text-muted" style={{ fontSize: 11 }}>
+                          Eigentor
+                        </Text>
+                        <Stepper value={ownGoalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerOwnGoals(p.id, v)} />
+                      </HStack>
+                    </HStack>
+                  </VStack>
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Eigentore {teamOneName}
+                    Sonstiges Eigentor {teamOneName}
                   </Text>
                   <Stepper value={redOwnGoals} onChange={setRedOwnGoals} />
                 </HStack>
@@ -186,40 +256,55 @@ export default function ErgebnisScreen() {
               </Text>
               <VStack className="gap-2">
                 {green.map((p) => (
-                  <HStack
+                  <VStack
                     key={p.id}
-                    className="items-center justify-between rounded-[14px] border border-hairline bg-bg-card px-3 py-2.5"
+                    className="gap-2 rounded-[14px] border border-hairline bg-bg-card px-3 py-2.5"
                   >
                     <Text className="font-body-semibold text-ink" style={{ fontSize: 13.5 }}>
                       {p.name}
                     </Text>
-                    <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
-                  </HStack>
+                    <HStack className="items-center justify-between">
+                      <HStack className="items-center gap-2">
+                        <Text className="font-body text-muted" style={{ fontSize: 11 }}>
+                          Tore
+                        </Text>
+                        <Stepper value={goalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerGoals(p.id, v)} />
+                      </HStack>
+                      <HStack className="items-center gap-2">
+                        <Text className="font-body text-muted" style={{ fontSize: 11 }}>
+                          Eigentor
+                        </Text>
+                        <Stepper value={ownGoalsByPlayer[p.id] ?? 0} onChange={(v) => setPlayerOwnGoals(p.id, v)} />
+                      </HStack>
+                    </HStack>
+                  </VStack>
                 ))}
                 <HStack className="items-center justify-between rounded-[14px] border border-hairline bg-bg-sunken px-3 py-2.5">
                   <Text className="font-body text-muted" style={{ fontSize: 13 }}>
-                    Eigentore {teamTwoName}
+                    Sonstiges Eigentor {teamTwoName}
                   </Text>
                   <Stepper value={greenOwnGoals} onChange={setGreenOwnGoals} />
                 </HStack>
               </VStack>
             </VStack>
 
-            <VStack className="gap-2.5">
-              <Text className="font-body-semibold text-dim" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
-                MVP
-              </Text>
-              <HStack className="flex-wrap gap-2">
-                {[...red, ...green].map((p) => (
-                  <PlayerChip
-                    key={p.id}
-                    name={p.name}
-                    tint={mvpId === p.id ? 'green' : 'neutral'}
-                    onPress={() => setMvpId(mvpId === p.id ? null : p.id)}
-                  />
-                ))}
-              </HStack>
-            </VStack>
+            {mvpEnabled && (
+              <VStack className="gap-2.5">
+                <Text className="font-body-semibold text-dim" style={{ fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
+                  MVP
+                </Text>
+                <HStack className="flex-wrap gap-2">
+                  {[...red, ...green].map((p) => (
+                    <PlayerChip
+                      key={p.id}
+                      name={p.name}
+                      tint={mvpId === p.id ? 'green' : 'neutral'}
+                      onPress={() => setMvpId(mvpId === p.id ? null : p.id)}
+                    />
+                  ))}
+                </HStack>
+              </VStack>
+            )}
           </>
         )}
 

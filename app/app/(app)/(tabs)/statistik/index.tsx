@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -44,11 +44,24 @@ const PODIUM_DISPLAY_ORDER: (1 | 2 | 3)[] = [2, 1, 3];
  * of this screen too, but that crowded a screen that was already doing a
  * lot — they now live on their own pushed screen (`uebersicht.tsx`),
  * reachable via the "Saison-Übersicht" row below.
+ *
+ * One metric chip, `mvp`, is gated on `features.mvp` (default off, unlike
+ * every other flag) — filtered out of the chip row entirely when the group
+ * hasn't turned it on, same treatment as the MVP picker on Ergebnis
+ * erfassen and the MVP tiles on Spielerprofil.
  */
 export default function StatistikScreen() {
   const { group } = useAuth();
+  const mvpEnabled = Boolean(group?.features.mvp);
+  const visibleMetrics = api.STATS_METRICS.filter((m) => m.key !== 'mvp' || mvpEnabled);
   const [scope, setScope] = useState<'season' | 'alltime'>('season');
   const [metric, setMetric] = useState<ApiStatsMetric>('tore');
+
+  // Falls back to `tore` if `mvp` was selected and the group then turns the
+  // flag off (chip disappears, but nothing else would clear the selection).
+  useEffect(() => {
+    if (metric === 'mvp' && !mvpEnabled) setMetric('tore');
+  }, [metric, mvpEnabled]);
   // `null` means "no explicit choice yet — use whichever season is active".
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
   // Tracks only an explicit pull-to-refresh — kept separate from
@@ -175,7 +188,7 @@ export default function StatistikScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ gap: 8, paddingRight: 8 }}
         >
-          {api.STATS_METRICS.map(({ key, label }) => {
+          {visibleMetrics.map(({ key, label }) => {
             const active = metric === key;
             return (
               <Pressable
