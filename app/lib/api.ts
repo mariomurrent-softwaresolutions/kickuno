@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 /**
@@ -18,7 +19,32 @@ function getApiBaseUrl(): string {
   // Set EXPO_PUBLIC_API_URL in app/.env (see app/.env.example) — e.g. your
   // Mac's LAN IP when testing on a physical device, since "localhost" from
   // the device/simulator won't reach a server running on your machine.
-  return process.env.EXPO_PUBLIC_API_URL ?? 'https://api-kickuno.meecode.at';
+  // Cloud EAS builds get this from eas.json's per-profile "env" instead of
+  // app/.env (which is gitignored and never reaches the build server) — the
+  // fallback below is only a last resort for e.g. a raw `gradlew`/Xcode
+  // build with neither in place.
+  const raw = process.env.EXPO_PUBLIC_API_URL;
+  if (__DEV__ && !raw) {
+    console.warn(
+      '[api] EXPO_PUBLIC_API_URL is not set — falling back to the production CMS. ' +
+        'Set it in app/.env (local) or eas.json (EAS builds) if that is not what you want.',
+    );
+  }
+  const url = raw ?? 'https://api-kickuno.meecode.at';
+
+  // "localhost"/"127.0.0.1" mean "this device" — on the iOS Simulator that
+  // happens to be your Mac too, but on the Android emulator it's the
+  // emulator's own virtual device, which never runs the CMS. The emulator
+  // exposes the host machine at the special alias 10.0.2.2, so rewrite it
+  // there automatically instead of failing with a confusing "server nicht
+  // erreichbar" error that looks like the env var wasn't picked up at all.
+  // (A *physical* Android phone has no such alias — for that case you still
+  // need to point EXPO_PUBLIC_API_URL at your Mac's LAN IP directly.)
+  if (Platform.OS === 'android' && /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url)) {
+    return url.replace(/(localhost|127\.0\.0\.1)/, '10.0.2.2');
+  }
+
+  return url;
 }
 
 export class ApiError extends Error {
@@ -100,7 +126,14 @@ async function request<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new ApiError('Server nicht erreichbar. Läuft das CMS und ist EXPO_PUBLIC_API_URL richtig gesetzt?', 0);
+    // Note: this fires for *any* fetch failure (CMS down, wrong host/port,
+    // no network, ...) — not specifically a missing EXPO_PUBLIC_API_URL.
+    // The most common cause on a physical Android device/emulator is
+    // EXPO_PUBLIC_API_URL still pointing at "localhost", which refers to
+    // the device itself, not your machine (getApiBaseUrl() above already
+    // rewrites it to 10.0.2.2 for the emulator; a real device needs your
+    // machine's LAN IP set directly in app/.env).
+    throw new ApiError(`Server nicht erreichbar unter ${getApiBaseUrl()}. Läuft das CMS und ist EXPO_PUBLIC_API_URL richtig gesetzt?`, 0);
   }
 
   const text = await res.text();
