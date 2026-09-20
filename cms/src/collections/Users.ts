@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload';
 
 import { ADMIN_PANEL_ALLOWED_EMAIL, isAdminPanelLoginEnabled } from '../lib/admin-access';
+import { deleteAccount } from '../lib/account-deletion';
 
 /**
  * Real auth (email + password) — implementation-plan.md §3.5. `strength`
@@ -125,6 +126,62 @@ export const Users: CollectionConfig = {
         });
 
         return Response.json({ message: 'Passwort geändert.' }, { status: 200 });
+      },
+    },
+    {
+      // Self-service account deletion (Profil screen, "Konto löschen" —
+      // not in the original plan). Requires the current password, same
+      // proof-of-identity check as /change-password above and for the
+      // same reason: a bare valid session token isn't enough evidence the
+      // caller actually wants this, only that some token exists — and
+      // unlike a password change, this can't be undone.
+      //
+      // The actual cleanup — reassigning this account's match history to
+      // a fresh `legacyPlayers` ghost profile per group (so other
+      // members' stats stay correct), removing memberships, promoting a
+      // replacement admin if this was a group's only one — all lives in
+      // `lib/account-deletion.ts`; this handler just verifies the
+      // password, delegates, then deletes the `users` document itself.
+      path: '/delete-account',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user || !req.user.email) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        const email = req.user.email;
+        const userId = req.user.id;
+
+        let body: Record<string, unknown> = {};
+        try {
+          body = (await req.json?.()) ?? {};
+        } catch {
+          // no/invalid JSON body — handled by the check below
+        }
+
+        const password = typeof body.password === 'string' ? body.password : '';
+        if (!password) {
+          return Response.json({ error: 'Passwort wird benötigt.' }, { status: 400 });
+        }
+
+        try {
+          await req.payload.login({
+            collection: 'users',
+            data: { email, password },
+            overrideAccess: true,
+          });
+        } catch {
+          return Response.json({ error: 'Passwort ist falsch.' }, { status: 401 });
+        }
+
+        const transfers = await deleteAccount(req.payload, userId);
+        await req.payload.delete({ collection: 'users', id: userId, overrideAccess: true });
+
+        // `transfers` lists every group where this account was the sole
+        // admin and someone else was promoted — the app shows this to the
+        // person before dropping them to the login screen, so an admin
+        // deleting their account isn't left wondering who runs their
+        // group now.
+        return Response.json({ message: 'Konto gelöscht.', transfers }, { status: 200 });
       },
     },
   ],

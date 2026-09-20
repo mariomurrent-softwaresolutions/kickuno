@@ -37,5 +37,23 @@
     "success": "Password changed.",
     "save": "Save",
     "saving": "Saving…"
+  },
+  "deleteAccount": {
+    "title": "Delete account",
+    "warning": "Your account will be permanently deleted. Your matches and stats stay in the group's history, but without any link to your account. This cannot be undone.",
+    "password": "Password to confirm",
+    "confirmButton": "Permanently delete account",
+    "deleting": "Deleting account…",
+    "alertTitle": "Really delete your account?",
+    "alertMessage": "This cannot be undone. Your account will be deleted immediately.",
+    "alertCancel": "Cancel",
+    "alertConfirm": "Delete",
+    "errors": {
+      "required": "Password is required.",
+      "generic": "Something went wrong."
+    },
+    "adminWarning": "You're the admin of {{group}}. Deleting your account will automatically make another member admin.",
+    "transferTitle": "Admin transferred",
+    "transferMessage": "{{name}} is now the admin of {{group}}."
   }
 }

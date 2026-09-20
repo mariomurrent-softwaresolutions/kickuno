@@ -37,5 +37,23 @@
     "success": "Passwort geändert.",
     "save": "Speichern",
     "saving": "Speichert…"
+  },
+  "deleteAccount": {
+    "title": "Konto löschen",
+    "warning": "Dein Konto wird endgültig gelöscht. Deine Spiele und Statistiken bleiben in der Gruppen-Historie erhalten, aber ohne Zuordnung zu deinem Account. Das kann nicht rückgängig gemacht werden.",
+    "password": "Passwort zur Bestätigung",
+    "confirmButton": "Konto endgültig löschen",
+    "deleting": "Löscht Konto…",
+    "alertTitle": "Konto wirklich löschen?",
+    "alertMessage": "Das kann nicht rückgängig gemacht werden. Dein Konto wird sofort gelöscht.",
+    "alertCancel": "Abbrechen",
+    "alertConfirm": "Löschen",
+    "errors": {
+      "required": "Passwort wird benötigt.",
+      "generic": "Etwas ist schiefgelaufen."
+    },
+    "adminWarning": "Du bist Admin von {{group}}. Beim Löschen wird automatisch ein anderes Mitglied zum Admin gemacht.",
+    "transferTitle": "Admin übertragen",
+    "transferMessage": "{{name}} ist jetzt Admin von {{group}}."
   }
 }

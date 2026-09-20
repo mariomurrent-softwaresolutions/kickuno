@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, TextInput } from 'react-native';
+import { Alert, ScrollView, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
@@ -103,8 +103,120 @@ export default function ProfilScreen() {
             {loggingOut ? t('logout.loading') : t('logout.action')}
           </Text>
         </Pressable>
+
+        <DeleteAccountCard />
       </VStack>
     </ScrollView>
+  );
+}
+
+/**
+ * Irreversible account deletion — not in the original plan, added on
+ * request. Two layers of confirmation on purpose, since this can't be
+ * undone: the current password (proof this is actually the account
+ * owner, same reasoning as `ChangePasswordCard`/`/change-password` — a
+ * bare valid session token isn't enough), then a native OS confirm
+ * dialog right before the request actually fires. Collapsed behind a
+ * "Konto löschen" row by default, same pattern as `ChangePasswordCard`,
+ * so it never sits open as a visual "danger zone" on a screen someone
+ * might just be glancing at.
+ */
+function DeleteAccountCard() {
+  const { t } = useTranslation('profil');
+  const { deleteAccount, membership, group } = useAuth();
+  const [expanded, setExpanded] = useState(false);
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Only meaningful while this account is still signed in — read once
+  // before deleteAccount() below drops the session, so the warning is
+  // based on the role/group the person actually had going into this.
+  const isGroupAdmin = membership?.role === 'admin';
+
+  function toggle() {
+    setExpanded((prev) => !prev);
+    setPassword('');
+    setError(null);
+  }
+
+  function handlePress() {
+    if (submitting) return;
+    setError(null);
+    if (!password) {
+      setError(t('deleteAccount.errors.required'));
+      return;
+    }
+    Alert.alert(t('deleteAccount.alertTitle'), t('deleteAccount.alertMessage'), [
+      { text: t('deleteAccount.alertCancel'), style: 'cancel' },
+      { text: t('deleteAccount.alertConfirm'), style: 'destructive', onPress: () => void handleConfirm() },
+    ]);
+  }
+
+  async function handleConfirm() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const transfers = await deleteAccount(password);
+      // Success drops straight back to the login screen via auth-context's
+      // own status change. If this account was a group's sole admin,
+      // deleteAccount() already promoted someone else server-side before
+      // this resolved — show who, so the person isn't left wondering.
+      // Alert.alert is a native modal independent of the navigation stack,
+      // so it still shows over the login screen that appears underneath.
+      for (const transfer of transfers) {
+        Alert.alert(
+          t('deleteAccount.transferTitle'),
+          t('deleteAccount.transferMessage', { group: transfer.groupName, name: transfer.promotedUserName }),
+        );
+      }
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : t('deleteAccount.errors.generic'));
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <VStack className="gap-3 rounded-[18px] border p-4" style={{ borderColor: colors.red, backgroundColor: 'rgba(226,59,59,0.06)' }}>
+      <Pressable onPress={toggle} className="flex-row items-center justify-between active:opacity-80">
+        <Text className="font-body-bold text-red" style={{ fontSize: 14.5 }}>
+          {t('deleteAccount.title')}
+        </Text>
+        <ChevronForwardIcon color={colors.red} />
+      </Pressable>
+
+      {expanded ? (
+        <VStack className="gap-3">
+          <Text className="font-body text-muted" style={{ fontSize: 12.5 }}>
+            {t('deleteAccount.warning')}
+          </Text>
+
+          {isGroupAdmin ? (
+            <Text className="font-body-semibold text-red" style={{ fontSize: 12.5 }}>
+              {t('deleteAccount.adminWarning', { group: group?.name ?? '' })}
+            </Text>
+          ) : null}
+
+          <PasswordField label={t('deleteAccount.password')} value={password} onChangeText={setPassword} />
+
+          {error ? (
+            <Text className="font-body-semibold text-red" style={{ fontSize: 12.5 }}>
+              {error}
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={handlePress}
+            disabled={submitting}
+            className="items-center rounded-[12px] py-3 active:opacity-85"
+            style={{ backgroundColor: colors.red, opacity: submitting ? 0.7 : 1 }}
+          >
+            <Text className="font-body-bold text-white" style={{ fontSize: 13.5 }}>
+              {submitting ? t('deleteAccount.deleting') : t('deleteAccount.confirmButton')}
+            </Text>
+          </Pressable>
+        </VStack>
+      ) : null}
+    </VStack>
   );
 }
 

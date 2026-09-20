@@ -325,6 +325,24 @@ export function changePassword(currentPassword: string, newPassword: string) {
   });
 }
 
+/**
+ * `POST /api/users/delete-account` (Users.ts) — same current-password
+ * proof-of-identity check as `changePassword` above, but irreversible: the
+ * server reassigns this account's match history to a fresh `legacyPlayers`
+ * ghost profile per group it belonged to, then deletes the account itself.
+ * Throws `ApiError` with a German message (e.g. wrong password) that's
+ * safe to show as-is. There is no session left to clean up server-side
+ * afterward — the caller (`auth-context.tsx`) drops straight to signedOut.
+ */
+export type ApiAdminTransfer = { groupId: string; groupName: string; promotedUserName: string };
+
+export function deleteAccount(password: string) {
+  return request<{ message: string; transfers?: ApiAdminTransfer[] }>('/api/users/delete-account', {
+    method: 'POST',
+    body: { password },
+  });
+}
+
 // --- Groups / memberships ---
 
 export function myMemberships(userId: string) {

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type P
 import { AppState, type AppStateStatus } from 'react-native';
 
 import * as api from './api';
-import type { ApiGroup, ApiMembership, ApiUser } from './api';
+import type { ApiAdminTransfer, ApiGroup, ApiMembership, ApiUser } from './api';
 import { applyUserLocale } from './i18n';
 
 // Payload's default JWT lifetime is 7200s (2h, cms/src/collections/Users.ts
@@ -36,6 +36,8 @@ type AuthState = {
   /** Re-fetches the current membership/group — call after PATCHing group settings (§4.6). */
   refreshGroup: () => Promise<void>;
   logout: () => Promise<void>;
+  /** Irreversible — verifies `password` server-side, then drops the session the same way `logout` does. Throws `ApiError` (e.g. wrong password) for the caller to show. Resolves with one entry per group where this account was the sole admin and someone else was promoted, so the caller can tell the person before they're signed out. */
+  deleteAccount: (password: string) => Promise<ApiAdminTransfer[]>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -190,8 +192,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     forceSignOut();
   }
 
+  async function deleteAccount(password: string) {
+    const { transfers } = await api.deleteAccount(password);
+    // The account (and its session) no longer exist server-side once this
+    // resolves — same local cleanup as logout().
+    await api.setToken(null);
+    forceSignOut();
+    return transfers ?? [];
+  }
+
   const value = useMemo<AuthState>(
-    () => ({ status, user, group, membership, login, register, joinGroup, createGroup, refreshGroup, logout }),
+    () => ({ status, user, group, membership, login, register, joinGroup, createGroup, refreshGroup, logout, deleteAccount }),
     [status, user, group, membership]
   );
 
