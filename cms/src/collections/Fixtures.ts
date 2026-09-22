@@ -811,6 +811,105 @@ export const Fixtures: CollectionConfig = {
         return Response.json({ result }, { status: 200 });
       },
     },
+    {
+      // Requested: mark a fixture as skipped when there aren't enough
+      // players, so it stops being "the next upcoming event" without
+      // pretending a game was actually played (that's what `status:
+      // 'played'` + a matchResults row means — see `hasResult`'s own doc
+      // comment above for why the two are deliberately kept distinct).
+      // Admin/organizer only, same gate as every other fixture-mutating
+      // endpoint here (§3.4). Only valid from 'upcoming' — a played
+      // fixture can't retroactively become "skipped", and skipping an
+      // already-skipped one is a plain no-op 400 rather than silently
+      // succeeding twice.
+      path: '/:id/skip',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const fixtureId = req.routeParams?.id;
+        if (typeof fixtureId !== 'string' && typeof fixtureId !== 'number') {
+          return Response.json({ error: 'Invalid fixture id' }, { status: 400 });
+        }
+
+        const fixture = await req.payload.findByID({
+          collection: 'fixtures',
+          id: fixtureId,
+          depth: 0,
+          overrideAccess: true,
+        });
+        if (!fixture) {
+          return Response.json({ error: 'Not found' }, { status: 404 });
+        }
+
+        const groupId = typeof fixture.group === 'object' && fixture.group !== null ? fixture.group.id : fixture.group;
+        const adminGroupIds = await membershipGroupIds(req, { roles: ['admin', 'organizer'] });
+        if (!adminGroupIds.map(String).includes(String(groupId))) {
+          return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        if (fixture.status !== 'upcoming') {
+          return Response.json({ error: 'Nur bevorstehende Termine können übersprungen werden.' }, { status: 400 });
+        }
+
+        const doc = await req.payload.update({
+          collection: 'fixtures',
+          id: fixtureId,
+          data: { status: 'skipped' },
+          overrideAccess: true,
+        });
+
+        return Response.json({ doc }, { status: 200 });
+      },
+    },
+    {
+      // Undo for the above — for an admin who skipped a fixture by
+      // mistake (enough players turned up after all). Only valid from
+      // 'skipped', back to 'upcoming'.
+      path: '/:id/unskip',
+      method: 'post',
+      handler: async (req) => {
+        if (!req.user) {
+          return Response.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const fixtureId = req.routeParams?.id;
+        if (typeof fixtureId !== 'string' && typeof fixtureId !== 'number') {
+          return Response.json({ error: 'Invalid fixture id' }, { status: 400 });
+        }
+
+        const fixture = await req.payload.findByID({
+          collection: 'fixtures',
+          id: fixtureId,
+          depth: 0,
+          overrideAccess: true,
+        });
+        if (!fixture) {
+          return Response.json({ error: 'Not found' }, { status: 404 });
+        }
+
+        const groupId = typeof fixture.group === 'object' && fixture.group !== null ? fixture.group.id : fixture.group;
+        const adminGroupIds = await membershipGroupIds(req, { roles: ['admin', 'organizer'] });
+        if (!adminGroupIds.map(String).includes(String(groupId))) {
+          return Response.json({ error: 'Forbidden' }, { status: 403 });
+        }
+
+        if (fixture.status !== 'skipped') {
+          return Response.json({ error: 'Dieser Termin ist nicht übersprungen.' }, { status: 400 });
+        }
+
+        const doc = await req.payload.update({
+          collection: 'fixtures',
+          id: fixtureId,
+          data: { status: 'upcoming' },
+          overrideAccess: true,
+        });
+
+        return Response.json({ doc }, { status: 200 });
+      },
+    },
   ],
   fields: [
     { name: 'group', type: 'relationship', relationTo: 'groups', required: true },
@@ -826,6 +925,7 @@ export const Fixtures: CollectionConfig = {
       options: [
         { label: 'Bevorstehend', value: 'upcoming' },
         { label: 'Gespielt', value: 'played' },
+        { label: 'Übersprungen', value: 'skipped' },
       ],
     },
     {

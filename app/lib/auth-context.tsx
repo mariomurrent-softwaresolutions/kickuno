@@ -5,12 +5,15 @@ import * as api from './api';
 import type { ApiAdminTransfer, ApiGroup, ApiMembership, ApiUser } from './api';
 import { applyUserLocale } from './i18n';
 
-// Payload's default JWT lifetime is 7200s (2h, cms/src/collections/Users.ts
-// doesn't override `tokenExpiration`). Refresh once less than half of that
+// cms/src/collections/Users.ts sets `tokenExpiration` to 60 days (raised
+// from Payload's 2h default specifically so a user who only opens the app
+// occasionally doesn't get silently logged out — see that field's own
+// comment for the full reasoning). Refresh once a full week of that
 // remains rather than waiting until the last minute — a device that's been
-// asleep can wake up well past when a "just in time" refresh would have
-// fired, and by then the token is already expired and unrefreshable.
-const REFRESH_MARGIN_SECONDS = 60 * 60;
+// asleep, or an app the user only opens weekly, can go a long stretch
+// between checks, and by the time the token has actually expired it's no
+// longer refreshable at all (the only way back in then is a real re-login).
+const REFRESH_MARGIN_SECONDS = 60 * 60 * 24 * 7;
 // Belt-and-suspenders re-check even if the app never backgrounds/foregrounds.
 const REFRESH_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -29,7 +32,8 @@ type AuthState = {
   user: ApiUser | null;
   group: ApiGroup | null;
   membership: ApiMembership | null;
-  login: (email: string, password: string) => Promise<void>;
+  /** `remember` — "Angemeldet bleiben" on the login screen; see api.ts#setSession for exactly what it controls. */
+  login: (email: string, password: string, remember: boolean) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   joinGroup: (code: string) => Promise<void>;
   createGroup: (name: string) => Promise<void>;
@@ -131,6 +135,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     (async () => {
+      // Load the user's remember-me choice first — maybeRefreshToken()
+      // (called just below) needs it cached before it writes any renewed
+      // token back, so a renewal respects the original choice instead of
+      // silently defaulting to "remembered".
+      await api.loadRememberPreference();
       const token = await api.getToken();
       if (!token) {
         setStatus('signedOut');
@@ -154,9 +163,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     })();
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, remember: boolean) {
     const { user: loggedInUser, token, exp } = await api.login(email, password);
-    await api.setSession(token, exp);
+    await api.setSession(token, exp, remember);
     setUser(loggedInUser);
     applyUserLocale(loggedInUser.locale);
     await loadMembership(loggedInUser.id);
@@ -165,8 +174,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   async function register(name: string, email: string, password: string) {
     await api.register(name, email, password);
     // Registration (POST /api/users) does not itself return a session token
-    // — log in right after with the same credentials.
-    await login(email, password);
+    // — log in right after with the same credentials. Registering always
+    // remembers the new session (matches how "create account" flows
+    // typically behave elsewhere — the remember-me choice only matters on
+    // the login form's own submit).
+    await login(email, password, true);
   }
 
   async function joinGroup(code: string) {

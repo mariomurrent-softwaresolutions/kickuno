@@ -15,5 +15,9 @@
   "season": {
     "eyebrow": "SEASON",
     "empty": "No fixtures in this season."
+  },
+  "skipped": {
+    "title": "Skipped",
+    "empty": "No skipped fixtures."
   }
 }

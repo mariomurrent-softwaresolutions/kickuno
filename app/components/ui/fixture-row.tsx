@@ -15,11 +15,13 @@ type Props = {
   hasResult?: boolean;
   /** e.g. "3:2" — shown beneath the hall name once an Ergebnis is recorded. */
   resultLabel?: string;
+  /** Shows a small dim dot + an "Übersprungen"/"Skipped" label instead of the result line — takes priority over `hasResult`/`resultLabel`. */
+  skipped?: boolean;
   onPress: () => void;
 };
 
 /** Termine list row — implementation-plan.md §4.2/§4.5. */
-export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasResult, resultLabel, onPress }: Props) {
+export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasResult, resultLabel, skipped, onPress }: Props) {
   const { t } = useTranslation('common');
   return (
     <Pressable onPress={onPress} className="active:opacity-80">
@@ -28,7 +30,9 @@ export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasR
             (not just the ones with a result) so the date tile still lines
             up regardless of whether this particular fixture has one. */}
         <Box style={{ width: 7, alignItems: 'center' }}>
-          {hasResult ? (
+          {skipped ? (
+            <Box style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.dim }} />
+          ) : hasResult ? (
             <Box style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.green }} />
           ) : null}
         </Box>
@@ -47,7 +51,11 @@ export function FixtureRow({ weekday, day, time, hallName, attendanceLabel, hasR
               {hallName}
             </Text>
           ) : null}
-          {resultLabel ? (
+          {skipped ? (
+            <Text className="font-body-semibold text-dim" style={{ fontSize: 12.5 }}>
+              {t('skipped')}
+            </Text>
+          ) : resultLabel ? (
             <Text className="font-body-semibold text-green" style={{ fontSize: 12.5 }}>
               {resultLabel}
             </Text>

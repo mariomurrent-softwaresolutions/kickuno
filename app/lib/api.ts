@@ -14,6 +14,42 @@ const TOKEN_KEY = 'hallenkick.token';
 // proactively refresh *before* it expires instead of finding out from a
 // failed request.
 const TOKEN_EXP_KEY = 'hallenkick.token.exp';
+// Whether the user opted into "Angemeldet bleiben" (remember me) on login
+// — see setSession() below for what this actually controls.
+const REMEMBER_KEY = 'hallenkick.rememberMe';
+
+// The token/exp always live here for the lifetime of the JS process, so
+// every API call works immediately after login/refresh regardless of
+// whether SecureStore is also holding a persisted copy. Only the
+// SecureStore copy determines whether the session survives an app restart
+// — see setSession()/setToken() below.
+let inMemoryToken: string | null = null;
+let inMemoryExp: number | null = null;
+// Cached copy of the user's remember-me choice, so a later setToken() (the
+// proactive-refresh path, which doesn't itself know the original choice)
+// persists — or doesn't — consistently with how the session started.
+// Defaults true so an existing installed app (from before this flag
+// existed) keeps behaving the way it always did: whatever was in
+// SecureStore just keeps getting refreshed in place.
+let rememberMe = true;
+
+/**
+ * Restores the cached `rememberMe` flag from SecureStore — call this once,
+ * before the first getToken()/setToken() of a fresh app process (i.e. at
+ * the very start of auth-context.tsx's session-restore effect), so a
+ * proactive token refresh later in that same process respects whatever the
+ * user picked at their last login rather than silently falling back to the
+ * default.
+ */
+export async function loadRememberPreference(): Promise<boolean> {
+  try {
+    const raw = await SecureStore.getItemAsync(REMEMBER_KEY);
+    rememberMe = raw !== '0';
+  } catch {
+    rememberMe = true;
+  }
+  return rememberMe;
+}
 
 function getApiBaseUrl(): string {
   // Set EXPO_PUBLIC_API_URL in app/.env (see app/.env.example) — e.g. your
@@ -56,6 +92,9 @@ export class ApiError extends Error {
 }
 
 export async function getToken(): Promise<string | null> {
+  if (inMemoryToken) return inMemoryToken;
+  // Nothing in memory yet (fresh process) — the only way that's still a
+  // valid session is a "remembered" one restored from SecureStore.
   try {
     return await SecureStore.getItemAsync(TOKEN_KEY);
   } catch {
@@ -65,6 +104,7 @@ export async function getToken(): Promise<string | null> {
 
 /** Unix seconds the stored token expires at, or `null` if unknown/not set. */
 export async function getTokenExpiry(): Promise<number | null> {
+  if (inMemoryExp != null) return inMemoryExp;
   try {
     const raw = await SecureStore.getItemAsync(TOKEN_EXP_KEY);
     return raw ? Number(raw) : null;
@@ -74,22 +114,66 @@ export async function getTokenExpiry(): Promise<number | null> {
 }
 
 export async function setToken(token: string | null): Promise<void> {
+  inMemoryToken = token;
+  if (!token) inMemoryExp = null;
   try {
-    if (token) await SecureStore.setItemAsync(TOKEN_KEY, token);
-    else await SecureStore.deleteItemAsync(TOKEN_KEY);
-    if (!token) await SecureStore.deleteItemAsync(TOKEN_EXP_KEY).catch(() => {});
+    if (token) {
+      // Only ever re-persist a *renewed* token (proactive refresh) into
+      // SecureStore when the session was "remembered" to begin with — a
+      // not-remembered session should stay memory-only for its whole life,
+      // renewals included, so it still doesn't survive an app restart.
+      if (rememberMe) await SecureStore.setItemAsync(TOKEN_KEY, token);
+    } else {
+      await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      await SecureStore.deleteItemAsync(TOKEN_EXP_KEY).catch(() => {});
+    }
   } catch {
-    // SecureStore unavailable (e.g. web) — auth just won't persist a reload.
+    // SecureStore unavailable (e.g. web) — the in-memory copy above still
+    // makes the rest of this process work, just without persistence.
   }
 }
 
-/** Stores a token together with the `exp` (unix seconds) Payload returned for it — call this instead of `setToken` after /login or /refresh-token. */
-export async function setSession(token: string, exp: number): Promise<void> {
-  await setToken(token);
+/**
+ * Stores a token together with the `exp` (unix seconds) Payload returned
+ * for it — call this instead of `setToken` after /login or /refresh-token.
+ *
+ * `remember` controls whether the session survives the app being fully
+ * closed and reopened, i.e. the "Angemeldet bleiben" checkbox on the login
+ * screen (login.tsx): `true` persists the token/exp into SecureStore (the
+ * OS's encrypted keychain/keystore) so a cold start finds it again and logs
+ * the user straight back in; `false` keeps the session in memory only for
+ * this process — still fully usable while the app is open/backgrounded,
+ * but gone the moment the app is terminated, landing back on the login
+ * screen next time. Pass it on the initial call after /login; omit it on
+ * the periodic-refresh call (auth-context.tsx#maybeRefreshToken) so a
+ * renewal keeps whatever the user originally chose instead of resetting it.
+ */
+export async function setSession(token: string, exp: number, remember?: boolean): Promise<void> {
+  if (remember != null) {
+    rememberMe = remember;
+    try {
+      await SecureStore.setItemAsync(REMEMBER_KEY, remember ? '1' : '0');
+    } catch {
+      // SecureStore unavailable — rememberMe still holds correctly for the
+      // rest of this process, just won't survive a restart to be reloaded.
+    }
+  }
+  inMemoryToken = token;
+  inMemoryExp = exp;
   try {
-    await SecureStore.setItemAsync(TOKEN_EXP_KEY, String(exp));
+    if (rememberMe) {
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      await SecureStore.setItemAsync(TOKEN_EXP_KEY, String(exp));
+    } else {
+      // Belt-and-suspenders: make sure a previous "remembered" session's
+      // leftovers can't linger if the user logs in again with the toggle
+      // off (e.g. on a shared device).
+      await SecureStore.deleteItemAsync(TOKEN_KEY).catch(() => {});
+      await SecureStore.deleteItemAsync(TOKEN_EXP_KEY).catch(() => {});
+    }
   } catch {
-    // SecureStore unavailable — refresh scheduling just won't have an exp to work from.
+    // SecureStore unavailable — refresh scheduling still works off the
+    // in-memory exp above for this process.
   }
 }
 
@@ -237,7 +321,7 @@ export type ApiFixture = {
   date: string;
   time: string;
   hall?: string | ApiHall;
-  status: 'upcoming' | 'played';
+  status: 'upcoming' | 'played' | 'skipped';
   repeatGroupId?: string;
   /** Computed by Fixtures.ts's afterRead hook — not a real stored field. */
   rsvpYesCount?: number;
@@ -271,12 +355,13 @@ export function login(email: string, password: string) {
 /**
  * Payload's built-in `POST /api/{collection}/refresh-token` — extends the
  * current session by minting a fresh JWT (same tokenExpiration, i.e.
- * another ~2h from now), *without* asking for the password again. Only
- * works while the current token is still valid — a token that has already
- * expired comes back 401/403 here too, and the only way back in then is a
- * real re-login. auth-context.tsx calls this proactively (well before
- * expiry, and again on app foreground) so a user who keeps the app open
- * doesn't hit that expired-token dead end at all.
+ * another full 60 days from now — see cms/src/collections/Users.ts),
+ * *without* asking for the password again. Only works while the current
+ * token is still valid — a token that has already expired comes back
+ * 401/403 here too, and the only way back in then is a real re-login.
+ * auth-context.tsx calls this proactively (well before expiry, and again
+ * on app foreground) so a user who keeps opening the app doesn't hit that
+ * expired-token dead end at all.
  */
 export function refreshToken() {
   return request<{ user: ApiUser; exp: number; refreshedToken: string }>('/api/users/refresh-token', {
@@ -477,7 +562,7 @@ function query(params: Record<string, string | number | undefined>): string {
   return parts.length ? `?${parts.join('&')}` : '';
 }
 
-export function listFixtures(groupId: string, status?: 'upcoming' | 'played', seasonId?: string) {
+export function listFixtures(groupId: string, status?: 'upcoming' | 'played' | 'skipped', seasonId?: string) {
   const qs = query({
     'where[group][equals]': groupId,
     'where[status][equals]': status,
@@ -491,6 +576,20 @@ export function listFixtures(groupId: string, status?: 'upcoming' | 'played', se
 
 export function getFixture(fixtureId: string) {
   return request<ApiFixture>(`/api/fixtures/${fixtureId}?depth=1`);
+}
+
+/** Admin/organizer only — marks an upcoming fixture as skipped (not enough players). */
+export function skipFixture(fixtureId: string) {
+  return request<{ doc: ApiFixture }>(`/api/fixtures/${fixtureId}/skip`, {
+    method: 'POST',
+  });
+}
+
+/** Admin/organizer only — undoes `skipFixture`, back to 'upcoming'. */
+export function unskipFixture(fixtureId: string) {
+  return request<{ doc: ApiFixture }>(`/api/fixtures/${fixtureId}/unskip`, {
+    method: 'POST',
+  });
 }
 
 export function listHalls(groupId: string) {

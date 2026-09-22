@@ -28,5 +28,6 @@
   "switchMode": {
     "toLogin": "Schon ein Konto? Einloggen.",
     "toRegister": "Noch kein Konto? Registrieren — den Gruppen-Code brauchst du gleich danach."
-  }
+  },
+  "rememberMe": "Angemeldet bleiben"
 }

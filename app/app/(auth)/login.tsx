@@ -29,6 +29,10 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Defaults on — matches what most people expect from a mobile app they'll
+  // reopen regularly; unchecking it is the deliberate "don't keep me signed
+  // in on this device" opt-out (see api.ts#setSession for what it does).
+  const [rememberMe, setRememberMe] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +54,7 @@ export default function LoginScreen() {
       if (mode === 'register') {
         await register(name.trim(), email.trim(), password);
       } else {
-        await login(email.trim(), password);
+        await login(email.trim(), password, rememberMe);
       }
       // Navigation happens automatically: the (auth) layout redirects to
       // /join or /(app)/(tabs) once useAuth()'s status updates.
@@ -123,6 +127,31 @@ export default function LoginScreen() {
             )}
             <LabeledInput label={t('fields.email.label')} value={email} onChangeText={setEmail} placeholder={t('fields.email.placeholder')} autoCapitalize="none" keyboardType="email-address" />
             <LabeledInput label={t('fields.password.label')} value={password} onChangeText={setPassword} placeholder="••••••••" secureTextEntry />
+
+            {mode === 'login' && (
+              <Pressable
+                onPress={() => setRememberMe((v) => !v)}
+                className="flex-row items-center gap-2.5 self-start py-1"
+              >
+                <HStack
+                  className="rounded-full p-0.5"
+                  style={{ width: 40, height: 24, backgroundColor: rememberMe ? colors.green : colors.bgSunken }}
+                >
+                  <Box
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#fff',
+                      marginLeft: rememberMe ? 16 : 0,
+                    }}
+                  />
+                </HStack>
+                <Text className="font-body-semibold text-dim" style={{ fontSize: 13 }}>
+                  {t('rememberMe')}
+                </Text>
+              </Pressable>
+            )}
 
             {error && (
               <Text className="font-body-semibold text-red" style={{ fontSize: 13 }}>

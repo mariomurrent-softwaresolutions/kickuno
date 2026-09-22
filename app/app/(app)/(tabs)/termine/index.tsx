@@ -54,6 +54,11 @@ export default function TermineScreen() {
     queryFn: () => api.listFixtures(group!.id, 'played', activeSeasonId),
     enabled: Boolean(group && activeSeasonId),
   });
+  const skipped = useQuery({
+    queryKey: ['fixtures', group?.id, 'skipped'],
+    queryFn: () => api.listFixtures(group!.id, 'skipped'),
+    enabled: Boolean(group),
+  });
 
   // Tracks only an explicit pull-to-refresh — see statistik/index.tsx's
   // comment on the same pattern. Any of the three queries refetching in
@@ -63,7 +68,7 @@ export default function TermineScreen() {
   async function refresh() {
     setIsRefreshing(true);
     try {
-      await Promise.all([upcoming.refetch(), past.refetch(), seasons.refetch()]);
+      await Promise.all([upcoming.refetch(), past.refetch(), seasons.refetch(), skipped.refetch()]);
     } finally {
       setIsRefreshing(false);
     }
@@ -72,6 +77,7 @@ export default function TermineScreen() {
   const upcomingGroups = upcoming.data ? groupFixturesByMonth(upcoming.data.docs) : [];
   const pastGroups = past.data ? groupFixturesByMonth(past.data.docs.slice().reverse()) : [];
   const pastSeasons = (seasons.data?.docs ?? []).filter((s) => s.status !== 'active');
+  const skippedGroups = skipped.data ? groupFixturesByMonth(skipped.data.docs.slice().reverse()) : [];
 
   return (
     <ScrollView
@@ -169,6 +175,31 @@ export default function TermineScreen() {
             </Text>
           )}
         </VStack>
+
+        {skippedGroups.length > 0 && (
+          <VStack className="gap-3">
+            <Text className="font-body-semibold text-[11px] tracking-[2px] uppercase text-dim">{t('skipped.title')}</Text>
+            <VStack className="gap-4">
+              {skippedGroups.map((group) => (
+                <VStack key={group.key} className="gap-2.5">
+                  <MonthDivider label={group.label} />
+                  <VStack className="gap-2">
+                    {group.fixtures.map((fixture) => (
+                      <FixtureRow
+                        key={fixture.id}
+                        {...fixtureDateParts(fixture.date)}
+                        time={fixture.time}
+                        hallName={typeof fixture.hall === 'object' ? fixture.hall?.name : undefined}
+                        skipped
+                        onPress={() => router.push(`/(app)/(tabs)/termine/${fixture.id}`)}
+                      />
+                    ))}
+                  </VStack>
+                </VStack>
+              ))}
+            </VStack>
+          </VStack>
+        )}
 
         {pastSeasons.length > 0 && (
           <VStack className="gap-3">

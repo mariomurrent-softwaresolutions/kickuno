@@ -28,5 +28,6 @@
   "switchMode": {
     "toLogin": "Already have an account? Log in.",
     "toRegister": "No account yet? Register — you'll need the group code right after."
-  }
+  },
+  "rememberMe": "Remember me"
 }

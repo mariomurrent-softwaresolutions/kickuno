@@ -15,5 +15,9 @@
   "season": {
     "eyebrow": "SAISON",
     "empty": "Keine Termine in dieser Saison."
+  },
+  "skipped": {
+    "title": "Übersprungen",
+    "empty": "Keine übersprungenen Termine."
   }
 }

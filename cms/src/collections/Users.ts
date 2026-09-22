@@ -15,7 +15,33 @@ import { deleteAccount } from '../lib/account-deletion';
  */
 export const Users: CollectionConfig = {
   slug: 'users',
-  auth: true,
+  // Payload's own default tokenExpiration is 7200s (2h) — far too short for
+  // a mobile app that isn't reopened every couple of hours, and exactly
+  // what caused "I get logged out after not using the app for a while"
+  // (reported Sept 2026): once the JWT itself expires, `/refresh-token`
+  // (which needs a still-valid token to mint a new one) can no longer save
+  // the session, so the user is dropped back to login with no way back in
+  // except re-entering their password. Raised to 60 days instead. This is
+  // safe specifically because of how the token is stored on the client
+  // (app/lib/api.ts): it lives in `expo-secure-store` — the OS's encrypted
+  // keychain/keystore, not AsyncStorage or plain JS state — and is only
+  // ever persisted there at all when the user opted into "Angemeldet
+  // bleiben" (remember me) on login (app/app/(auth)/login.tsx); otherwise
+  // it stays in memory only and the session doesn't survive an app restart.
+  // `auth-context.tsx#maybeRefreshToken` proactively renews the token
+  // (via /refresh-token) whenever less than a week of this lifetime
+  // remains, checked on every app foreground/launch, so as long as a
+  // "remembered" user opens the app at least once every ~53 days, their
+  // session renews indefinitely —
+  // they're only ever asked to log in again after a much longer stretch of
+  // not using the app at all. Note this is a stateless JWT: there is no
+  // server-side revocation list, so a leaked token from *before* a
+  // password change or account deletion is not itself invalidated early —
+  // same trade-off Payload's default already had, just over a longer
+  // window now.
+  auth: {
+    tokenExpiration: 60 * 60 * 24 * 60, // 60 days, up from Payload's 2h default
+  },
   admin: {
     useAsTitle: 'name',
   },

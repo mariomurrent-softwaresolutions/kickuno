@@ -184,6 +184,35 @@ export default function TerminDetailScreen() {
     }
   }
 
+  // Requested: mark a fixture as skipped when there aren't enough
+  // players — takes it out of "upcoming" (so it stops being the Start
+  // screen's next fixture) without pretending a result was recorded.
+  // Same admin/organizer-only gate as every other mutating action here;
+  // the backend enforces it independently too.
+  const skipMutation = useMutation({
+    mutationFn: () => api.skipFixture(fixtureId),
+    onSuccess: ({ doc }) => {
+      queryClient.setQueryData(['fixture', fixtureId], doc);
+      queryClient.invalidateQueries({ queryKey: ['fixtures'] });
+    },
+    onError: (err) => {
+      const message = err instanceof api.ApiError ? err.message : t('error.generic');
+      Alert.alert(t('error.title'), message);
+    },
+  });
+
+  const unskipMutation = useMutation({
+    mutationFn: () => api.unskipFixture(fixtureId),
+    onSuccess: ({ doc }) => {
+      queryClient.setQueryData(['fixture', fixtureId], doc);
+      queryClient.invalidateQueries({ queryKey: ['fixtures'] });
+    },
+    onError: (err) => {
+      const message = err instanceof api.ApiError ? err.message : t('error.generic');
+      Alert.alert(t('error.title'), message);
+    },
+  });
+
   const zusagenCount = lineup ? lineup.pool.length + lineup.red.length + lineup.green.length : 0;
   const eingeteiltCount = lineup ? lineup.red.length + lineup.green.length : 0;
   const balance =
@@ -222,6 +251,17 @@ export default function TerminDetailScreen() {
             {fixture.time}{tCommon('time.suffix')}
             {typeof fixture.hall === 'object' && fixture.hall?.name ? ` · ${fixture.hall.name}` : ''}
           </Text>
+        )}
+
+        {fixture?.status === 'skipped' && (
+          <HStack
+            className="items-center self-start rounded-[10px] px-2.5 py-1"
+            style={{ backgroundColor: colors.bgSunken }}
+          >
+            <Text className="font-body-semibold text-dim" style={{ fontSize: 11.5, letterSpacing: 1, textTransform: 'uppercase' }}>
+              {t('skip.badge')}
+            </Text>
+          </HStack>
         )}
 
         {hasResult && resultQuery.data?.result ? (
@@ -266,6 +306,32 @@ export default function TerminDetailScreen() {
               </Text>
             </Pressable>
           </HStack>
+        )}
+
+        {canEdit && fixture?.status === 'upcoming' && (
+          <Pressable
+            onPress={() => skipMutation.mutate()}
+            disabled={skipMutation.isPending}
+            className="items-center rounded-[13px] border py-3 active:opacity-80"
+            style={{ borderColor: colors.hairline }}
+          >
+            <Text className="font-body-semibold text-dim" style={{ fontSize: 13.5 }}>
+              {skipMutation.isPending ? t('skip.loading') : t('skip.action')}
+            </Text>
+          </Pressable>
+        )}
+
+        {canEdit && fixture?.status === 'skipped' && (
+          <Pressable
+            onPress={() => unskipMutation.mutate()}
+            disabled={unskipMutation.isPending}
+            className="items-center rounded-[13px] border py-3 active:opacity-80"
+            style={{ borderColor: colors.hairline }}
+          >
+            <Text className="font-body-semibold text-muted" style={{ fontSize: 13.5 }}>
+              {unskipMutation.isPending ? t('skip.unskipLoading') : t('skip.unskipAction')}
+            </Text>
+          </Pressable>
         )}
 
         <VStack className="gap-2.5">

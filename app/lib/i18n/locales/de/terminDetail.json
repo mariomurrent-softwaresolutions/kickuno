@@ -33,5 +33,12 @@
   "error": {
     "title": "Konnte nicht gespeichert werden",
     "generic": "Aktion fehlgeschlagen."
+  },
+  "skip": {
+    "badge": "Übersprungen",
+    "action": "Als übersprungen markieren",
+    "loading": "Markiert…",
+    "unskipAction": "Reaktivieren",
+    "unskipLoading": "Reaktiviert…"
   }
 }

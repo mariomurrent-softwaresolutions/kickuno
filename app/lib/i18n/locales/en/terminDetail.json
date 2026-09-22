@@ -33,5 +33,12 @@
   "error": {
     "title": "Couldn't save",
     "generic": "Action failed."
+  },
+  "skip": {
+    "badge": "Skipped",
+    "action": "Mark as skipped",
+    "loading": "Marking…",
+    "unskipAction": "Reactivate",
+    "unskipLoading": "Reactivating…"
   }
 }
